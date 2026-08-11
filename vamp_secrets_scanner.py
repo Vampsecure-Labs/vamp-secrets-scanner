@@ -1201,6 +1201,9 @@ def parse_args() -> argparse.Namespace:
                     help="Instalar hook pre-commit git en el directorio objetivo y salir")
     ci.add_argument("--export-semgrep",      metavar="FICHERO",
                     help="Exportar patrones como reglas Semgrep YAML y salir")
+    ci.add_argument("--verify",              action="store_true",
+                    help="Verificar activamente si los secretos CRITICAL/HIGH encontrados siguen "
+                         "válidos (petición mínima a la API del proveedor; requiere aiohttp)")
 
     # Argumentos de informe unificado VSL (--client, --engagement, --auditor,
     # --report-scope, --report-html, --report-pdf)
@@ -1345,6 +1348,163 @@ exit 0
     console.print(f"[bold green]  ✔ Hook pre-commit instalado: {hook_path}[/]")
     console.print(f"[dim]  Cada commit escaneará el árbol de trabajo completo (MEDIUM+).[/]")
     console.print(f"[dim]  Para desinstalar: rm {hook_path}[/]")
+
+
+# =============================================================================
+# VERIFICACIÓN ACTIVA DE SECRETOS (--verify)
+# =============================================================================
+
+def _extract_raw_value(finding: "Finding") -> Optional[str]:
+    """
+    Re-lee el fichero fuente y extrae el valor raw del secreto usando el
+    mismo patrón que lo detectó originalmente.
+
+    Solo funciona con hallazgos del árbol de trabajo (no de historial git).
+    """
+    if finding.git_commit:
+        return None    # hallazgo de historial — fichero no accesible directamente
+    try:
+        path = Path(finding.file)
+        if not path.is_file():
+            return None
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for pat in SECRET_PATTERNS:
+            if pat["name"] == finding.pattern:
+                for match in pat["compiled"].finditer(text):
+                    line_no = text[: match.start()].count("\n") + 1
+                    if line_no == finding.line_no:
+                        return match.group(0)
+    except Exception:
+        pass
+    return None
+
+
+async def _check_secret_active(session, category: str, value: str) -> Optional[bool]:
+    """
+    Hace una petición mínima a la API del proveedor para saber si el
+    secreto sigue activo. Retorna True (activo), False (revocado/inválido)
+    o None (no se pudo determinar).
+
+    Soporta: GitHub tokens, Stripe live keys, Slack bot/user tokens,
+    Telegram bot tokens. AWS Access Key ID en solitario no se puede verificar
+    (se necesita también el Secret) → None.
+    """
+    import base64 as _b64
+    import re as _re
+    try:
+        timeout_cfg = {"total": 10}
+        UA = f"{TOOL_NAME}/{VERSION}"
+
+        if "AWS" in category and _re.match(r"(AKIA|AGPA|AIPA|ANPA|ANVA|AROA|ASCA|ASIA)", value):
+            # Solo el Access Key ID: imposible verificar sin el Secret Access Key
+            return None
+
+        elif "GitHub" in category and value.startswith(("ghp_", "gho_", "ghs_", "github_pat_")):
+            headers = {"Authorization": f"token {value}", "User-Agent": UA}
+            async with session.get(
+                "https://api.github.com/user", headers=headers,
+                timeout=10, ssl=True
+            ) as r:
+                return r.status == 200
+
+        elif "Stripe" in category and value.startswith("sk_live_"):
+            creds = _b64.b64encode(f"{value}:".encode()).decode()
+            headers = {"Authorization": f"Basic {creds}", "User-Agent": UA}
+            async with session.get(
+                "https://api.stripe.com/v1/customers?limit=1", headers=headers,
+                timeout=10, ssl=True
+            ) as r:
+                return r.status == 200
+
+        elif "Slack" in category and value.startswith(("xoxb-", "xoxp-", "xapp-")):
+            headers = {"Authorization": f"Bearer {value}", "User-Agent": UA}
+            async with session.post(
+                "https://slack.com/api/auth.test", headers=headers,
+                timeout=10, ssl=True
+            ) as r:
+                data = await r.json(content_type=None)
+                return bool(data.get("ok"))
+
+        elif "Telegram" in category:
+            m = _re.search(r"([0-9]{8,10}:[A-Za-z0-9_\-]{35})", value)
+            if m:
+                token = m.group(1)
+                async with session.get(
+                    f"https://api.telegram.org/bot{token}/getMe",
+                    timeout=10, ssl=True
+                ) as r:
+                    data = await r.json(content_type=None)
+                    return bool(data.get("ok"))
+
+    except Exception:
+        pass
+    return None
+
+
+async def _run_verification(findings: "List[Finding]") -> None:
+    """
+    Verifica activamente los secretos CRITICAL/HIGH de los hallazgos.
+    Imprime en consola qué secretos siguen activos, cuáles están revocados
+    y cuáles no se pudieron comprobar.
+    """
+    import aiohttp as _aiohttp
+
+    VERIFICABLES = {"Cloud · AWS", "VCS · GitHub", "Pagos · Stripe",
+                    "Comunicaciones · Slack", "Comunicaciones · Telegram"}
+
+    candidatos = [
+        f for f in findings
+        if f.severity in (Severity.CRITICAL, Severity.HIGH)
+        and any(cat in f.category for cat in VERIFICABLES)
+        and not f.git_commit    # solo árbol de trabajo
+    ]
+
+    if not candidatos:
+        console.print("[dim]  --verify: no hay hallazgos verificables (se requiere árbol de trabajo + proveedor soportado).[/]")
+        return
+
+    console.print(f"\n[bold cyan]  FASE EXTRA — Verificación activa ({len(candidatos)} secretos)[/]\n")
+
+    activos = revocados = sin_datos = 0
+
+    async with _aiohttp.ClientSession() as session:
+        for finding in candidatos:
+            raw = _extract_raw_value(finding)
+            if not raw:
+                sin_datos += 1
+                console.print(f"  [dim]? {finding.pattern} en {finding.file}:{finding.line_no} — valor no recuperable[/]")
+                continue
+
+            status = await _check_secret_active(session, finding.category, raw)
+            preview = raw[:6] + "…" + raw[-3:] if len(raw) > 10 else raw[:3] + "…"
+
+            if status is True:
+                activos += 1
+                console.print(
+                    f"  [bold red]✖ ACTIVO[/]   {finding.pattern} [{preview}] "
+                    f"— {finding.file}:{finding.line_no}"
+                )
+            elif status is False:
+                revocados += 1
+                console.print(
+                    f"  [green]✔ revocado[/] {finding.pattern} [{preview}] "
+                    f"— {finding.file}:{finding.line_no}"
+                )
+            else:
+                sin_datos += 1
+                console.print(
+                    f"  [dim]? indeterminado[/] {finding.pattern} [{preview}] "
+                    f"— {finding.file}:{finding.line_no}"
+                )
+
+    estilo = "bold red" if activos > 0 else "bold green"
+    console.print(
+        f"\n  [{estilo}]Verificación: {activos} activos · {revocados} revocados · {sin_datos} sin datos[/]"
+    )
+    if activos:
+        console.print(
+            "  [bold red]⚠ ACCIÓN URGENTE: rota inmediatamente los secretos activos listados.[/]"
+        )
 
 
 def _export_semgrep_rules(output_file: str) -> None:
@@ -1528,6 +1688,10 @@ def main() -> None:
     if n_git:
         resumen += f" · {n_git} en historial git"
     console.print(resumen + "[/]")
+
+    # ── Verificación activa de secretos (--verify) ───────────────────────────
+    if getattr(args, "verify", False) and filtered:
+        asyncio.run(_run_verification(filtered))
 
     # ── Exportación ───────────────────────────────────────────────────────────
     if args.output:
