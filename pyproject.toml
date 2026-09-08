@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "vamp-secrets-scanner"
+version = "2.0"
+description = "Static secrets and credentials scanner with git history analysis, Shannon entropy detection and SARIF 2.1.0 output"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "VampSecure Studios", email = "contact@vampsecurestudios.com" }]
+keywords = ["security", "secrets", "credentials", "scanner", "pentest", "sast", "sarif", "entropy"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = ["rich>=13.7.0"]
+
+[project.scripts]
+vamp-secrets-scanner = "vamp_secrets_scanner:main"
+
+[project.urls]
+Homepage = "https://github.com/Vampsecure-Labs/vamp-secrets-scanner"
+Repository = "https://github.com/Vampsecure-Labs/vamp-secrets-scanner"
+"Bug Tracker" = "https://github.com/Vampsecure-Labs/vamp-secrets-scanner/issues"
+
+[tool.setuptools]
+py-modules = ["vamp_secrets_scanner"]
