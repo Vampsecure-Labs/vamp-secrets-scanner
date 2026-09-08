@@ -113,14 +113,14 @@ VERSION   = "2.0"
 TOOL_NAME = "vamp-secrets-scanner"
 
 BANNER = r"""
-  ____   ____    _    __  __ ____  _____ ____ _   _ ____  _____   _        _    ____ ____
- \ \ / / _  |  / \  |  \/  |  _ \/ ____/ ___| | | |  _ \| ____| | |      / \  | __ ) ___|
-  \ V / (_| | / _ \ | |\/| | |_) \___ \| |___| | | | |_) |  _|   | |     / _ \ |  _ \___ \
-   | |  \__, |/ ___ \| |  | |  __/ ___) |___  | |_| |  _ <| |___  | |___ / ___ \| |_) |__) |
-   |_|     /_/_/   \_|_|  |_|_|   |____/\____|\___/|_| \_|_____| |_____/_/   \_|____/____/
-     by VampSecure Studios · vamp-secrets-scanner v2.0 · Static Secrets & Git History Scanner
-     ──────────────────────────────────────────────────────────────────────────────────────────
-     USO EXCLUSIVO EN AUDITORÍAS AUTORIZADAS · El uso no autorizado es ilegal
+__   ___   __  __ ___  ___ ___ ___ _   _ ___ ___ _      _   ___ ___ 
+\ \ / /_\ |  \/  | _ \/ __| __/ __| | | | _ \ __| |    /_\ | _ ) __|
+ \ V / _ \| |\/| |  _/\__ \ _| (__| |_| |   / _|| |__ / _ \| _ \__ \
+  \_/_/ \_\_|  |_|_|  |___/___\___|\___/|_|_\___|____/_/ \_\___/___/
+  by Antonio Hernandez "Belky" — VampSecure Studios
+  vamp-secrets-scanner v2.0 · Static Secrets & Git History Scanner
+  ────────────────────────────────────────────────────────────────────────
+  USO EXCLUSIVO EN AUDITORÍAS AUTORIZADAS · El uso no autorizado es ilegal
 """
 
 console = Console()
@@ -234,15 +234,15 @@ _RAW_PATTERNS: List[Dict[str, str]] = [
 
     # ── Claves privadas / certificados ────────────────────────────────────────
     {"name": "RSA Private Key (PEM)",      "severity": "CRITICAL", "category": "Infraestructura · PKI",
-     "regex": r"-----BEGIN RSA PRIVATE KEY-----"},
+     "regex": r"-----BEGIN\s+RSA\s+PRIVATE\s+KEY-----"},
     {"name": "EC Private Key (PEM)",       "severity": "CRITICAL", "category": "Infraestructura · PKI",
-     "regex": r"-----BEGIN EC PRIVATE KEY-----"},
+     "regex": r"-----BEGIN\s+EC\s+PRIVATE\s+KEY-----"},
     {"name": "OpenSSH Private Key",        "severity": "CRITICAL", "category": "Infraestructura · PKI",
-     "regex": r"-----BEGIN OPENSSH PRIVATE KEY-----"},
+     "regex": r"-----BEGIN\s+OPENSSH\s+PRIVATE\s+KEY-----"},
     {"name": "PKCS8 Private Key",          "severity": "CRITICAL", "category": "Infraestructura · PKI",
-     "regex": r"-----BEGIN PRIVATE KEY-----"},
+     "regex": r"-----BEGIN\s+PRIVATE\s+KEY-----"},
     {"name": "PGP Private Key Block",      "severity": "CRITICAL", "category": "Infraestructura · PKI",
-     "regex": r"-----BEGIN PGP PRIVATE KEY BLOCK-----"},
+     "regex": r"-----BEGIN\s+PGP\s+PRIVATE\s+KEY\s+BLOCK-----"},
 
     # ── WireGuard ─────────────────────────────────────────────────────────────
     {"name": "WireGuard PrivateKey",       "severity": "CRITICAL", "category": "Infraestructura · WireGuard",
