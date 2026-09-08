@@ -1,0 +1,6 @@
+{
+  "_nota": "Allowlist de falsos positivos del propio scanner al escanearse a sí mismo.",
+  "allowlist": [
+    {"file": "vamp_secrets_scanner.py"}
+  ]
+}

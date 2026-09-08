@@ -23,6 +23,7 @@ dist/
 *.html
 *.pdf
 *.json
+!.allowlist-self.json
 *.sarif
 *.csv
 *.log
