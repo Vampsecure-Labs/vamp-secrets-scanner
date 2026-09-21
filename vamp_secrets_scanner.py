@@ -109,16 +109,16 @@ from rich.text import Text
 # Constantes
 # ─────────────────────────────────────────────────────────────────────────────
 
-VERSION   = "2.0"
+VERSION   = "2.1"
 TOOL_NAME = "vamp-secrets-scanner"
 
 BANNER = r"""
-__   ___   __  __ ___  ___ ___ ___ _   _ ___ ___ _      _   ___ ___ 
+__   ___   __  __ ___  ___ ___ ___ _   _ ___ ___ _      _   ___ ___
 \ \ / /_\ |  \/  | _ \/ __| __/ __| | | | _ \ __| |    /_\ | _ ) __|
  \ V / _ \| |\/| |  _/\__ \ _| (__| |_| |   / _|| |__ / _ \| _ \__ \
   \_/_/ \_\_|  |_|_|  |___/___\___|\___/|_|_\___|____/_/ \_\___/___/
   by Antonio Hernandez "Belky" — VampSecure Studios
-  vamp-secrets-scanner v2.0 · Static Secrets & Git History Scanner
+  vamp-secrets-scanner v2.1 · Static Secrets & Git History Scanner
   ────────────────────────────────────────────────────────────────────────
   USO EXCLUSIVO EN AUDITORÍAS AUTORIZADAS · El uso no autorizado es ilegal
 """
@@ -286,6 +286,27 @@ _RAW_PATTERNS: List[Dict[str, str]] = [
     {"name": "HubSpot API Key",            "severity": "HIGH",     "category": "CRM · HubSpot",
      "regex": r"(?i)hubspot.{0,20}['\"]([A-Za-z0-9\-]{36})['\"]"},
 
+    # ── HashiCorp Vault / HCP (CVE-2026-5052 cluster) ────────────────────────
+    # Tokens HashiCorp Vault — formato legacy (s.) y moderno (hvs.)
+    # CVE-2026-5052: vulnerabilidad SSRF en el endpoint de emisión de certificados
+    # PKI de Vault que permite exfiltrar claves privadas mediante peticiones
+    # manipuladas al servidor de certificación.
+    {"name": "HashiCorp Vault Token",         "severity": "CRITICAL", "category": "Infraestructura · Vault",
+     "regex": r"(?i)(?:VAULT_TOKEN|X-Vault-Token|vault.{0,10}token)\s*[:=]\s*['\"]?(s\.[a-zA-Z0-9]{24,})['\"]?"},
+    {"name": "Vault Wrapped Token (HVS)",     "severity": "CRITICAL", "category": "Infraestructura · Vault",
+     "regex": r"hvs\.[a-zA-Z0-9]{24,}"},
+    {"name": "HCP Client Secret",             "severity": "CRITICAL", "category": "Infraestructura · Vault",
+     "regex": r"(?i)HCP_CLIENT_SECRET\s*[:=]\s*['\"]?([a-zA-Z0-9_\-]{64,})['\"]?"},
+    {"name": "Vault PKI Private Key (CVE-2026-5052)", "severity": "HIGH", "category": "Infraestructura · Vault",
+     "regex": r"(?i)(?:vault|pki).{0,40}-----BEGIN\s*(RSA\s+|EC\s+|OPENSSH\s+)?PRIVATE\s+KEY-----"},
+    # Vault unseal keys e Initial Root Token volcados en ficheros de texto —
+    # hallazgo CRÍTICO inmediato: indican que la inicialización de Vault se
+    # guardó en disco sin cifrar.
+    {"name": "Vault Unseal Key en fichero",   "severity": "CRITICAL", "category": "Infraestructura · Vault",
+     "regex": r"(?i)unseal_key_\d+\s*:\s*[A-Za-z0-9+/=]{40,}"},
+    {"name": "Vault Initial Root Token",      "severity": "CRITICAL", "category": "Infraestructura · Vault",
+     "regex": r"Initial Root Token:\s+s\.[a-zA-Z0-9]+"},
+
     # ── Datos personales y financieros (PII / PCI DSS) ───────────────────────
     # Tarjetas de crédito/débito — PAN (Primary Account Number)
     # Exige separadores (espacio o guión) para reducir falsos positivos.
@@ -380,6 +401,7 @@ INCLUDE_EXTENSIONS: Set[str] = {
     ".htaccess", ".htpasswd",
     ".pem", ".key", ".crt", ".cer",
     ".txt", ".md",
+    ".hcl",   # HashiCorp Configuration Language (Vault, Terraform)
 }
 
 # Nombres de fichero que se escanean independientemente de su extensión
@@ -734,6 +756,213 @@ def scan_git_history(
                         git_author  = author,
                         git_date    = date,
                     ))
+
+    return findings
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Fase 2c — Análisis de misconfiguraciones de HashiCorp Vault
+# ─────────────────────────────────────────────────────────────────────────────
+
+def scan_vault_misconfig(path: Path) -> List[Finding]:
+    """
+    Analiza ficheros de configuración de HashiCorp Vault (.hcl, .env, .yaml)
+    buscando misconfiguraciones de seguridad conocidas.
+
+    Checks implementados
+    --------------------
+    SECRET-VAULT-001 (CRITICAL) — CVE-2026-5052: política PKI sin allowed_domains
+        Ficheros .hcl con capacidades sobre path "pki/*" sin restricción
+        allowed_domains → SSRF explotable en el endpoint de emisión de certs.
+
+    SECRET-VAULT-002 (HIGH) — Vault Audit Log deshabilitado
+        Configs HCL sin bloque audit { type = "file" } → pérdida de trazabilidad.
+
+    SECRET-VAULT-003 (HIGH) — TLS deshabilitado (VAULT_SKIP_VERIFY)
+        VAULT_SKIP_VERIFY=true o vault_skip_verify: true en cualquier fichero
+        de configuración → tráfico Vault sin verificación de certificado.
+
+    SECRET-VAULT-004 (CRITICAL) — Unseal keys o root token en ficheros de texto
+        Patrones de inicialización de Vault volcados en disco sin cifrar.
+
+    Parámetros
+    ----------
+    path : Path — Raíz del árbol a analizar (ya descubierto por discover_files)
+
+    Retorna
+    -------
+    List[Finding] — Hallazgos de misconfiguración con categoría "Vault · Misconfig"
+    """
+    findings: List[Finding] = []
+
+    # ── Recopilar ficheros relevantes para análisis de misconfig Vault ─────────
+    # Se examinan .hcl (políticas/config Vault), .env* y ficheros YAML/TOML
+    vault_extensions = {".hcl", ".env", ".yaml", ".yml", ".toml", ".cfg", ".conf", ".config"}
+    vault_filenames  = {
+        ".env", ".envrc", "vault.hcl", "config.hcl", "policy.hcl",
+        "vault-config.yml", "vault-config.yaml",
+    }
+
+    try:
+        candidatos = [
+            f for f in path.rglob("*")
+            if f.is_file()
+            and not any(part in EXCLUDE_DIRS for part in f.parts)
+            and (f.suffix.lower() in vault_extensions or f.name in vault_filenames)
+        ]
+    except PermissionError:
+        return []
+
+    # Regex auxiliares para los distintos checks
+    _PKI_CAP_RE        = re.compile(r'path\s+"pki/[^"]*"\s*\{[^}]*capabilities\s*=\s*\[([^\]]+)\]', re.DOTALL)
+    _ALLOWED_DOM_RE    = re.compile(r'allowed_domains\s*=')
+    _AUDIT_BLOCK_RE    = re.compile(r'audit\s*\{[^}]*type\s*=\s*"file"', re.DOTALL)
+    _SKIP_VERIFY_RE    = re.compile(r'(?i)(VAULT_SKIP_VERIFY\s*=\s*true|vault_skip_verify\s*:\s*true)')
+    _UNSEAL_KEY_RE     = re.compile(r'(?i)unseal_key_\d+\s*:\s*[A-Za-z0-9+/=]{40,}')
+    _ROOT_TOKEN_RE     = re.compile(r'Initial Root Token:\s+s\.[a-zA-Z0-9]+')
+    _LONG_TTL_RE       = re.compile(r'(?i)(?:max_)?ttl\s*=\s*"?(\d+)h"?')
+
+    hcl_files    = [f for f in candidatos if f.suffix.lower() == ".hcl"]
+    all_files    = candidatos
+
+    # ── SECRET-VAULT-001: CVE-2026-5052 — PKI sin allowed_domains ─────────────
+    for hcl_file in hcl_files:
+        try:
+            contenido = hcl_file.read_text(encoding="utf-8", errors="replace")
+        except (PermissionError, OSError):
+            continue
+
+        for m in _PKI_CAP_RE.finditer(contenido):
+            caps_raw = m.group(1)
+            # Solo si las capabilities incluyen wildcard "*" (privilegio sin restricción)
+            if '"*"' not in caps_raw and "'*'" not in caps_raw:
+                continue
+            # Verificar si en el mismo bloque (o en el fichero) existe allowed_domains
+            bloque_inicio = m.start()
+            bloque_fin    = m.end()
+            segmento      = contenido[max(0, bloque_inicio - 200): bloque_fin + 500]
+            if _ALLOWED_DOM_RE.search(segmento):
+                continue  # allowed_domains presente → no vulnerable
+            linea = contenido[:bloque_inicio].count("\n") + 1
+            fp    = _fingerprint(f"{hcl_file}:pki-no-allowed-domains:{linea}", "SECRET-VAULT-001")
+            findings.append(Finding(
+                file        = str(hcl_file),
+                line_no     = linea,
+                pattern     = "SECRET-VAULT-001: Vault PKI sin allowed_domains (CVE-2026-5052)",
+                category    = "Vault · Misconfig",
+                severity    = Severity.CRITICAL,
+                preview     = "PKI capabilities=* sin allowed_domains",
+                context     = [
+                    "  CVE-2026-5052: política PKI con capabilities=[\"*\"] y sin",
+                    "  restricción allowed_domains → SSRF explotable en endpoint",
+                    "  de emisión de certificados de Vault.",
+                ],
+                fingerprint = fp,
+            ))
+
+        # Certificados PKI con TTL excesivo (> 87600h = 10 años)
+        for m_ttl in _LONG_TTL_RE.finditer(contenido):
+            ttl_h = int(m_ttl.group(1))
+            if ttl_h <= 87600:
+                continue
+            linea = contenido[:m_ttl.start()].count("\n") + 1
+            fp    = _fingerprint(f"{hcl_file}:pki-ttl-excesivo:{linea}", "SECRET-VAULT-001-TTL")
+            findings.append(Finding(
+                file        = str(hcl_file),
+                line_no     = linea,
+                pattern     = "SECRET-VAULT-001b: Vault PKI TTL excesivo (>10 años)",
+                category    = "Vault · Misconfig",
+                severity    = Severity.HIGH,
+                preview     = f"ttl={ttl_h}h (mala práctica PKI)",
+                context     = [
+                    f"  TTL de certificado = {ttl_h}h (> 87600h = 10 años).",
+                    "  Mala práctica asociada a CVE-2026-5052: certificados de",
+                    "  larga vida facilitan el abuso post-explotación.",
+                ],
+                fingerprint = fp,
+            ))
+
+    # ── SECRET-VAULT-002: Vault Audit Log deshabilitado ───────────────────────
+    # Si hay ficheros .hcl de config de Vault pero ninguno tiene bloque audit
+    if hcl_files:
+        tiene_audit = any(
+            _AUDIT_BLOCK_RE.search(
+                f.read_text(encoding="utf-8", errors="replace")
+            )
+            for f in hcl_files
+            if f.is_file()
+        )
+        if not tiene_audit:
+            # Usar el primer .hcl como referencia del hallazgo
+            ref_file = hcl_files[0]
+            fp       = _fingerprint(f"{ref_file}:audit-log-disabled", "SECRET-VAULT-002")
+            findings.append(Finding(
+                file        = str(ref_file),
+                line_no     = 0,
+                pattern     = "SECRET-VAULT-002: Vault Audit Log deshabilitado",
+                category    = "Vault · Misconfig",
+                severity    = Severity.HIGH,
+                preview     = "Sin bloque audit { type = \"file\" } en configs HCL",
+                context     = [
+                    "  No se encontró ningún bloque audit { type = \"file\" }",
+                    "  en los ficheros .hcl analizados. Sin audit log activo,",
+                    "  las operaciones de Vault no quedan registradas.",
+                ],
+                fingerprint = fp,
+            ))
+
+    # ── SECRET-VAULT-003: VAULT_SKIP_VERIFY=true ──────────────────────────────
+    for cfg_file in all_files:
+        try:
+            contenido = cfg_file.read_text(encoding="utf-8", errors="replace")
+        except (PermissionError, OSError):
+            continue
+        for m in _SKIP_VERIFY_RE.finditer(contenido):
+            linea = contenido[:m.start()].count("\n") + 1
+            fp    = _fingerprint(f"{cfg_file}:skip-verify:{linea}", "SECRET-VAULT-003")
+            findings.append(Finding(
+                file        = str(cfg_file),
+                line_no     = linea,
+                pattern     = "SECRET-VAULT-003: VAULT_SKIP_VERIFY=true (TLS deshabilitado)",
+                category    = "Vault · Misconfig",
+                severity    = Severity.HIGH,
+                preview     = _censor(m.group(0)),
+                context     = [
+                    f"  {linea:4d} │ {m.group(0).rstrip()}",
+                    "  TLS deshabilitado → tráfico Vault sin verificación de",
+                    "  certificado. Vulnerable a ataques MITM.",
+                ],
+                fingerprint = fp,
+            ))
+
+    # ── SECRET-VAULT-004: Unseal keys / Initial Root Token en disco ───────────
+    for chk_file in all_files:
+        try:
+            contenido = chk_file.read_text(encoding="utf-8", errors="replace")
+        except (PermissionError, OSError):
+            continue
+        for patron, regex_obj in [
+            ("Vault Unseal Key en fichero (SECRET-VAULT-004)", _UNSEAL_KEY_RE),
+            ("Vault Initial Root Token en fichero (SECRET-VAULT-004)", _ROOT_TOKEN_RE),
+        ]:
+            for m in regex_obj.finditer(contenido):
+                valor  = m.group(0)
+                linea  = contenido[:m.start()].count("\n") + 1
+                fp     = _fingerprint(valor, "SECRET-VAULT-004")
+                findings.append(Finding(
+                    file        = str(chk_file),
+                    line_no     = linea,
+                    pattern     = patron,
+                    category    = "Vault · Misconfig",
+                    severity    = Severity.CRITICAL,
+                    preview     = _censor(valor),
+                    context     = [
+                        f"  {linea:4d} │ {valor[:60].rstrip()}",
+                        "  Vault unseal keys o root token volcados en disco sin",
+                        "  cifrar — compromiso total del cluster de Vault.",
+                    ],
+                    fingerprint = fp,
+                ))
 
     return findings
 
@@ -1636,6 +1865,15 @@ def main() -> None:
             all_findings.extend(git_findings)
         else:
             console.print("[yellow]  Aviso: --git-history solicitado pero el directorio no es un repo git[/]\n")
+
+    # ── Fase 2c: análisis de misconfiguraciones de Vault ──────────────────────
+    console.print("[bold cyan]  FASE 2c[/] — Analizando misconfiguraciones Vault (CVE-2026-5052)...")
+    vault_findings = scan_vault_misconfig(target)
+    if vault_findings:
+        console.print(f"[dim]  {len(vault_findings)} hallazgos de misconfiguración Vault[/]\n")
+    else:
+        console.print("[dim]  Sin misconfiguraciones Vault detectadas[/]\n")
+    all_findings.extend(vault_findings)
 
     # ── Deduplicación y filtrado ──────────────────────────────────────────────
     seen: Set[str] = set()
