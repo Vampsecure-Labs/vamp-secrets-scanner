@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# © VampSecure Studios — VampSecure Labs Security Research Division
 """
 vamp_secrets_scanner.py — Escáner Estático de Secretos y Credenciales
 ======================================================================
@@ -109,7 +110,7 @@ from rich.text import Text
 # Constantes
 # ─────────────────────────────────────────────────────────────────────────────
 
-VERSION   = "2.2"
+VERSION   = "2.3"
 TOOL_NAME = "vamp-secrets-scanner"
 
 BANNER = r"""
@@ -118,7 +119,7 @@ __   ___   __  __ ___  ___ ___ ___ _   _ ___ ___ _      _   ___ ___
  \ V / _ \| |\/| |  _/\__ \ _| (__| |_| |   / _|| |__ / _ \| _ \__ \
   \_/_/ \_\_|  |_|_|  |___/___\___|\___/|_|_\___|____/_/ \_\___/___/
   by Antonio Hernandez "Belky" — VampSecure Studios
-  vamp-secrets-scanner v2.2 · Static Secrets & Git History Scanner
+  vamp-secrets-scanner v2.3 · Static Secrets & Git History Scanner
   ────────────────────────────────────────────────────────────────────────
   USO EXCLUSIVO EN AUDITORÍAS AUTORIZADAS · El uso no autorizado es ilegal
 """
@@ -1492,6 +1493,174 @@ function toggle(row){{
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Escaneo de contenedores Docker en runtime  (v2.3)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _docker_disponible() -> bool:
+    """
+    Comprueba si el binario docker está disponible en el PATH.
+    Retorna True si está disponible, False en caso contrario.
+    """
+    import shutil as _shutil
+    return _shutil.which("docker") is not None
+
+
+def _obtener_envs_contenedor(container_id: str) -> Optional[List[str]]:
+    """
+    Obtiene las variables de entorno de un contenedor Docker.
+
+    Intenta primero con 'docker inspect' para leer la configuración estática;
+    si no devuelve variables, recurre a 'docker exec env' como alternativa.
+
+    Parámetros
+    ----------
+    container_id : nombre o ID del contenedor en ejecución
+
+    Retorna lista de strings con formato 'CLAVE=valor', o None si falla.
+    """
+    envs: List[str] = []
+
+    # Método 1: docker inspect (más rápido, no requiere shell en el contenedor)
+    try:
+        result = subprocess.run(
+            ["docker", "inspect", "--format", "{{range .Config.Env}}{{println .}}{{end}}", container_id],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            envs = [l for l in result.stdout.splitlines() if l.strip() and "=" in l]
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        pass
+
+    # Método 2: docker exec env (alternativa si inspect no devolvió variables)
+    if not envs:
+        try:
+            result = subprocess.run(
+                ["docker", "exec", container_id, "env"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                envs = [l for l in result.stdout.splitlines() if l.strip() and "=" in l]
+        except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+            pass
+
+    return envs if envs else None
+
+
+def scan_docker_container(container_id: str) -> List[Finding]:
+    """
+    Escanea las variables de entorno de un contenedor Docker en ejecución.
+
+    Aplica los mismos 77 patrones de SECRET_PATTERNS del scanner estático
+    a cada variable de entorno del contenedor. Los hallazgos se marcan
+    como categoría 'Docker · Runtime Env' con severidad CRITICAL.
+
+    Parámetros
+    ----------
+    container_id : nombre o ID del contenedor Docker a escanear
+
+    Retorna lista de Finding con los secretos encontrados en las envs del contenedor.
+    """
+    if not _docker_disponible():
+        console.print("[yellow]  Aviso: 'docker' no encontrado en PATH — omitiendo escaneo de contenedor[/]")
+        return []
+
+    console.print(f"[cyan]  Escaneando contenedor Docker: {container_id}[/]")
+
+    envs = _obtener_envs_contenedor(container_id)
+    if envs is None:
+        console.print(f"[yellow]  Aviso: no se pudieron obtener variables de entorno del contenedor '{container_id}'[/]")
+        return []
+
+    hallazgos: List[Finding] = []
+
+    for linea in envs:
+        if not linea.strip() or "=" not in linea:
+            continue
+
+        # Escanear la línea de variable de entorno con los patrones habituales
+        for pat in SECRET_PATTERNS:
+            match = pat["compiled"].search(linea)
+            if not match:
+                continue
+
+            valor_raw  = match.group(0)
+            extracto   = _censor(valor_raw)
+            fp         = _fingerprint(valor_raw, "DOCKER_ENV_SECRET")
+
+            # Nombre de la variable de entorno (parte antes del '=')
+            nombre_var = linea.split("=", 1)[0]
+
+            hallazgos.append(Finding(
+                file        = f"docker://{container_id}",
+                line_no     = 0,
+                pattern     = f"DOCKER_ENV_SECRET: {pat['name']}",
+                category    = "Docker · Runtime Env",
+                severity    = Severity.CRITICAL,
+                preview     = extracto,
+                context     = [
+                    f"  Contenedor: {container_id}",
+                    f"  Variable:   {nombre_var}",
+                    f"  Patrón:     {pat['name']}",
+                    f"  Extracto:   {extracto}",
+                ],
+                fingerprint = fp,
+            ))
+
+    if hallazgos:
+        console.print(
+            f"  [bold red]⚠ {len(hallazgos)} secreto(s) encontrado(s) en "
+            f"variables de entorno de '{container_id}'[/]"
+        )
+    else:
+        console.print(f"  [green]✔ Sin secretos detectados en las envs de '{container_id}'[/]")
+
+    return hallazgos
+
+
+def scan_all_docker_containers() -> List[Finding]:
+    """
+    Escanea los contenedores Docker actualmente en ejecución.
+
+    Ejecuta 'docker ps -q' para obtener los IDs de todos los contenedores
+    activos y aplica scan_docker_container() a cada uno.
+
+    Retorna la lista combinada de hallazgos de todos los contenedores.
+    """
+    if not _docker_disponible():
+        console.print("[yellow]  Aviso: 'docker' no encontrado en PATH — omitiendo escaneo de contenedores[/]")
+        return []
+
+    # Obtener lista de IDs de contenedores en ejecución
+    try:
+        result = subprocess.run(
+            ["docker", "ps", "-q"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        ids = [i.strip() for i in result.stdout.splitlines() if i.strip()]
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as exc:
+        console.print(f"[red]  Error ejecutando 'docker ps': {exc}[/]")
+        return []
+
+    if not ids:
+        console.print("[yellow]  No hay contenedores Docker en ejecución.[/]")
+        return []
+
+    console.print(f"[cyan]  Escaneando {len(ids)} contenedor(es) Docker en ejecución...[/]")
+    todos_hallazgos: List[Finding] = []
+
+    for cid in ids:
+        todos_hallazgos.extend(scan_docker_container(cid))
+
+    return todos_hallazgos
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # CLI
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -1565,6 +1734,16 @@ def parse_args() -> argparse.Namespace:
                         "Útil para aceptar el estado actual tras una revisión. "
                         "El baseline se crea si no existe (default: .vamp-secrets-baseline.json)."
                     ))
+
+    docker = p.add_argument_group("Escaneo Docker en runtime (v2.3)")
+    docker.add_argument("--scan-container",  metavar="NAME_OR_ID",
+                        dest="scan_container", default=None,
+                        help="Escanear variables de entorno de un contenedor Docker en ejecución. "
+                             "Requiere que 'docker' esté disponible en el PATH.")
+    docker.add_argument("--scan-all-containers", action="store_true",
+                        dest="scan_all_containers",
+                        help="Escanear todos los contenedores Docker actualmente en ejecución "
+                             "('docker ps -q'). Requiere que 'docker' esté disponible en el PATH.")
 
     ci = p.add_argument_group("Integración CI/CD")
     ci.add_argument("--install-hook",        action="store_true",
@@ -2015,6 +2194,34 @@ def main() -> None:
     else:
         console.print("[dim]  Sin misconfiguraciones Vault detectadas[/]\n")
     all_findings.extend(vault_findings)
+
+    # ── Fase 2d: escaneo de contenedores Docker en runtime (v2.3) ────────────
+    _contenedor_a_escanear = getattr(args, "scan_container", None)
+    _escanear_todos        = getattr(args, "scan_all_containers", False)
+
+    if _contenedor_a_escanear:
+        console.print("[bold cyan]  FASE 2d[/] — Escaneando contenedor Docker en runtime...")
+        docker_findings = scan_docker_container(_contenedor_a_escanear)
+        if docker_findings:
+            console.print(
+                f"[dim]  {len(docker_findings)} hallazgo(s) en variables de entorno "
+                f"del contenedor '{_contenedor_a_escanear}'[/]\n"
+            )
+        else:
+            console.print("[dim]  Sin secretos detectados en el contenedor indicado[/]\n")
+        all_findings.extend(docker_findings)
+
+    elif _escanear_todos:
+        console.print("[bold cyan]  FASE 2d[/] — Escaneando todos los contenedores Docker en ejecución...")
+        docker_findings = scan_all_docker_containers()
+        if docker_findings:
+            console.print(
+                f"[dim]  {len(docker_findings)} hallazgo(s) en variables de entorno "
+                f"de contenedores Docker[/]\n"
+            )
+        else:
+            console.print("[dim]  Sin secretos detectados en los contenedores en ejecución[/]\n")
+        all_findings.extend(docker_findings)
 
     # ── Deduplicación y filtrado ──────────────────────────────────────────────
     seen: Set[str] = set()

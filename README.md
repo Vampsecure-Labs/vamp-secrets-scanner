@@ -1,3 +1,4 @@
+<!-- © VampSecure Studios — VampSecure Labs Security Research Division -->
 <h1 align="center">vamp-secrets-scanner</h1>
 <p align="center">
   <strong>Static secrets and credential scanner with Git history analysis and SARIF export</strong><br>
@@ -48,6 +49,13 @@ Runtime dependencies:
 Standard library only beyond `rich`: `re`, `os`, `math`, `pathlib`, `hashlib`, `json`, `argparse`, `subprocess`.
 
 ## Installation
+
+
+```bash
+pip install vamp-secrets-scanner
+# o con Homebrew:
+brew install vampsecure-labs/labs/vamp-secrets-scanner
+```
 
 ```bash
 git clone https://github.com/belky-me/vamp-secrets-scanner.git
@@ -149,3 +157,8 @@ This tool is part of the **VampSecure Labs Security Toolkit** — a collection o
 
 © VampSecure Studios — VampSecure Labs Security Research Division  
 For authorized security testing only.
+
+---
+
+## Versión
+v2.2 — VampSecure Labs Security Research Division
