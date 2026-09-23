@@ -1,0 +1,191 @@
+# © VampSecure Studios — VampSecure Labs Security Research Division
+# Workflow reutilizable de GitHub Actions para integrar vamp-secrets-scanner en CI.
+#
+# USO — como step en tu pipeline:
+#
+#   jobs:
+#     security-scan:
+#       uses: Vampsecure-Labs/vamp-secrets-scanner/.github/workflows/scan.yml@main
+#
+# O bien copiar los steps directamente en tu propio workflow.
+#
+# COMPORTAMIENTO:
+#   - Instala vamp-secrets-scanner desde PyPI
+#   - Escanea el checkout completo incluyendo historial git
+#   - Aplica el baseline .vamp-secrets-baseline.json si existe
+#   - Falla el pipeline (exit 1/2) si hay hallazgos CRITICAL o HIGH no aceptados
+#   - Genera artefacto JSON con todos los hallazgos para trazabilidad
+
+name: "VampSecure — Secrets Scan"
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+  # Permite ejecutar manualmente desde la pestaña Actions
+  workflow_dispatch:
+    inputs:
+      min_severity:
+        description: "Severidad mínima a reportar (CRITICAL/HIGH/MEDIUM/LOW)"
+        required: false
+        default: "HIGH"
+        type: choice
+        options:
+          - CRITICAL
+          - HIGH
+          - MEDIUM
+          - LOW
+      scan_git_history:
+        description: "Incluir historial git completo en el escaneo"
+        required: false
+        default: "true"
+        type: boolean
+
+jobs:
+  secrets-scan:
+    name: "Escáner de secretos y credenciales"
+    runs-on: ubuntu-latest
+    # Permisos mínimos — solo lectura del repositorio y escritura de artefactos
+    permissions:
+      contents: read
+      security-events: write   # necesario para subir SARIF a GitHub Advanced Security
+
+    steps:
+      # ── 1. Checkout completo con historial para detectar secretos borrados ──
+      - name: "Checkout repositorio (historial completo)"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # 0 = historial completo; necesario para --git-history
+
+      # ── 2. Configurar Python ─────────────────────────────────────────────────
+      - name: "Configurar Python 3.11"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      # ── 3. Instalar vamp-secrets-scanner ────────────────────────────────────
+      - name: "Instalar vamp-secrets-scanner"
+        run: pip install --quiet vamp-secrets-scanner
+
+      # ── 4. Escanear el repositorio ───────────────────────────────────────────
+      - name: "Escanear secretos y credenciales"
+        id: scan
+        run: |
+          # Determinar severidad mínima (manual override o HIGH por defecto)
+          MIN_SEV="${{ github.event.inputs.min_severity || 'HIGH' }}"
+          SCAN_HISTORY="${{ github.event.inputs.scan_git_history || 'true' }}"
+
+          # Construir el comando base
+          CMD="vamp-secrets-scanner . --min-severity ${MIN_SEV} --output secrets-findings.json --sarif secrets.sarif"
+
+          # Añadir historial git si está activado
+          if [ "${SCAN_HISTORY}" = "true" ]; then
+            CMD="${CMD} --git-history"
+          fi
+
+          # Aplicar baseline si existe (suprime hallazgos ya aceptados)
+          if [ -f ".vamp-secrets-baseline.json" ]; then
+            echo "Baseline encontrado — aplicando .vamp-secrets-baseline.json"
+            CMD="${CMD} --baseline .vamp-secrets-baseline.json"
+          fi
+
+          echo "Ejecutando: ${CMD}"
+          eval ${CMD}
+
+          # El exit code del scanner:
+          #   0 → sin hallazgos (o todos en baseline)
+          #   1 → hay hallazgos HIGH
+          #   2 → hay hallazgos CRITICAL
+          # GitHub Actions falla el step si el exit code != 0.
+        # Continuar para generar el artefacto incluso si hay hallazgos
+        continue-on-error: true
+
+      # ── 5. Subir resultados como artefacto ───────────────────────────────────
+      - name: "Subir artefacto JSON de hallazgos"
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: "vamp-secrets-scan-${{ github.sha }}"
+          path: |
+            secrets-findings.json
+            secrets.sarif
+          retention-days: 30
+
+      # ── 6. Subir SARIF a GitHub Advanced Security ────────────────────────────
+      # Activa el análisis de código de GitHub y añade anotaciones en PRs.
+      # Requiere: repositorio público o GitHub Advanced Security habilitado.
+      - name: "Subir resultados SARIF a GitHub Advanced Security"
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('secrets.sarif') != ''
+        with:
+          sarif_file: secrets.sarif
+          category: "vamp-secrets-scanner"
+        continue-on-error: true   # No bloquear si GHAS no está disponible
+
+      # ── 7. Fallar el pipeline si hay hallazgos CRITICAL o HIGH ───────────────
+      # Este step falla explícitamente con un mensaje claro si el scanner
+      # detectó hallazgos por encima del umbral configurado.
+      - name: "Evaluar resultado del escaneo"
+        run: |
+          if [ -f "secrets-findings.json" ]; then
+            CRITICAL=$(python3 -c "import json,sys; d=json.load(open('secrets-findings.json')); print(d.get('summary',{}).get('critical',0))")
+            HIGH=$(python3 -c "import json,sys; d=json.load(open('secrets-findings.json')); print(d.get('summary',{}).get('high',0))")
+            TOTAL=$(python3 -c "import json,sys; d=json.load(open('secrets-findings.json')); print(d.get('summary',{}).get('total',0))")
+            echo "Resumen del escaneo: TOTAL=${TOTAL} CRITICAL=${CRITICAL} HIGH=${HIGH}"
+            if [ "${CRITICAL}" -gt "0" ] || [ "${HIGH}" -gt "0" ]; then
+              echo ""
+              echo "PIPELINE BLOQUEADO — Se detectaron hallazgos CRITICAL/HIGH no aceptados."
+              echo "Opciones:"
+              echo "  1. Eliminar los secretos del código y rotar las credenciales afectadas."
+              echo "  2. Si son falsos positivos, acepta el hallazgo con:"
+              echo "     vamp-secrets-scanner . --update-baseline"
+              echo "     y hace commit del fichero .vamp-secrets-baseline.json"
+              exit 1
+            fi
+          fi
+          echo "Escaneo completado sin hallazgos CRITICAL o HIGH."
+
+      # ── 8. (Opcional) Resumen en GitHub Actions Summary ──────────────────────
+      - name: "Generar resumen en GitHub Actions"
+        if: always() && hashFiles('secrets-findings.json') != ''
+        run: |
+          python3 - <<'PYEOF'
+          import json, os
+          try:
+              with open("secrets-findings.json") as f:
+                  data = json.load(f)
+              s = data.get("summary", {})
+              findings = data.get("findings", [])
+              lines = [
+                  "## VampSecure Secrets Scanner",
+                  f"**Objetivo:** {data.get('target', '.')}  ",
+                  f"**Total hallazgos:** {s.get('total', 0)} "
+                  f"(🔴 {s.get('critical', 0)} CRÍTICO · "
+                  f"🟠 {s.get('high', 0)} ALTO · "
+                  f"🟡 {s.get('medium', 0)} MEDIO · "
+                  f"🔵 {s.get('low', 0)} BAJO)",
+                  "",
+              ]
+              if findings:
+                  lines.append("| Severidad | Fichero | Línea | Patrón |")
+                  lines.append("|-----------|---------|-------|--------|")
+                  for f in findings[:20]:
+                      lines.append(
+                          f"| {f.get('severity','')} "
+                          f"| `{f.get('file','')}` "
+                          f"| {f.get('line_no','')} "
+                          f"| {f.get('pattern','')} |"
+                      )
+                  if len(findings) > 20:
+                      lines.append(f"*... y {len(findings)-20} hallazgos más. Ver artefacto JSON.*")
+              else:
+                  lines.append("✅ No se detectaron secretos.")
+              summary = os.environ.get("GITHUB_STEP_SUMMARY", "")
+              if summary:
+                  with open(summary, "a") as f:
+                      f.write("\n".join(lines) + "\n")
+          except Exception as e:
+              print(f"No se pudo generar el resumen: {e}")
+          PYEOF

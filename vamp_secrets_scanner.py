@@ -109,7 +109,7 @@ from rich.text import Text
 # Constantes
 # ─────────────────────────────────────────────────────────────────────────────
 
-VERSION   = "2.1"
+VERSION   = "2.2"
 TOOL_NAME = "vamp-secrets-scanner"
 
 BANNER = r"""
@@ -118,7 +118,7 @@ __   ___   __  __ ___  ___ ___ ___ _   _ ___ ___ _      _   ___ ___
  \ V / _ \| |\/| |  _/\__ \ _| (__| |_| |   / _|| |__ / _ \| _ \__ \
   \_/_/ \_\_|  |_|_|  |___/___\___|\___/|_|_\___|____/_/ \_\___/___/
   by Antonio Hernandez "Belky" — VampSecure Studios
-  vamp-secrets-scanner v2.1 · Static Secrets & Git History Scanner
+  vamp-secrets-scanner v2.2 · Static Secrets & Git History Scanner
   ────────────────────────────────────────────────────────────────────────
   USO EXCLUSIVO EN AUDITORÍAS AUTORIZADAS · El uso no autorizado es ilegal
 """
@@ -520,6 +520,18 @@ def _censor(match: str) -> str:
 def _fingerprint(value: str, pattern_name: str) -> str:
     raw = f"{pattern_name}:{value}"
     return hashlib.sha256(raw.encode()).hexdigest()[:12]
+
+
+def _baseline_fingerprint(file: str, line_no: int, pattern_name: str) -> str:
+    """
+    Genera el fingerprint de contexto para el baseline.
+
+    A diferencia de _fingerprint, NO incluye el valor del secreto en claro:
+    solo usa fichero + número de línea + nombre del patrón. Esto permite
+    identificar un hallazgo concreto en su ubicación sin almacenar secretos.
+    """
+    ctx = f"{file}:{line_no}:{pattern_name}"
+    return hashlib.sha256(ctx.encode()).hexdigest()
 
 
 def _context_lines(lines: List[str], lineno: int, radius: int = 2) -> List[str]:
@@ -1050,6 +1062,121 @@ def generate_allowlist(findings: List[Finding], path: str) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Soporte de baseline — fichero .vamp-secrets-baseline.json
+# ─────────────────────────────────────────────────────────────────────────────
+# El baseline permite suprimir hallazgos que el equipo ha revisado y aceptado
+# conscientemente (p.ej. credenciales de test, fixtures de datos de ejemplo).
+# A diferencia de la allowlist (que usa el fingerprint del valor), el baseline
+# usa el fingerprint del CONTEXTO (fichero + línea + patrón), sin almacenar
+# el secreto en claro. Si el secreto se mueve de línea, vuelve a aparecer.
+#
+# Formato del fichero baseline:
+#   {
+#     "version": "1.0",
+#     "accepted": [
+#       {
+#         "fingerprint": "<sha256_de_contexto>",
+#         "reason": "credencial de test",
+#         "added": "2024-01-01",
+#         "pattern": "Stripe Test Secret Key",
+#         "file": "tests/fixtures.py",
+#         "line": 42
+#       }
+#     ]
+#   }
+# ─────────────────────────────────────────────────────────────────────────────
+
+def load_baseline(path: str) -> List[dict]:
+    """
+    Carga el baseline de hallazgos aceptados desde un fichero JSON.
+
+    Retorna la lista de entradas aceptadas; vacía si el fichero no existe
+    o no tiene el formato esperado.
+    """
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        return data.get("accepted", [])
+    except FileNotFoundError:
+        return []
+    except (json.JSONDecodeError, OSError) as exc:
+        console.print(f"[yellow]  Aviso: no se pudo leer el baseline '{path}': {exc}[/]")
+        return []
+
+
+def apply_baseline(findings: List[Finding], accepted: List[dict]) -> List[Finding]:
+    """
+    Marca como allowlisted=True los hallazgos cuyo fingerprint de contexto
+    aparezca en el baseline. Los hallazgos marcados se excluyen del informe
+    y no generan código de salida de error en CI.
+    """
+    if not accepted:
+        return findings
+    baseline_fps = {e["fingerprint"] for e in accepted if "fingerprint" in e}
+    for f in findings:
+        bf = _baseline_fingerprint(f.file, f.line_no, f.pattern)
+        if bf in baseline_fps:
+            f.allowlisted = True
+    return findings
+
+
+def update_baseline(findings: List[Finding], path: str, reason: str = "") -> None:
+    """
+    Añade todos los hallazgos de la lista al baseline sin reportarlos como error.
+
+    Si el baseline ya existe, se fusionan las entradas; no se duplican
+    fingerprints. Si no existe, se crea desde cero.
+
+    Parámetros
+    ----------
+    findings : List[Finding]  — Hallazgos a aceptar (normalmente los actuales)
+    path     : str            — Ruta al fichero baseline
+    reason   : str            — Motivo de aceptación (texto libre)
+    """
+    # Cargar entradas existentes
+    existing: List[dict] = []
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        existing = data.get("accepted", [])
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        pass
+
+    existing_fps = {e["fingerprint"] for e in existing}
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    nuevos = 0
+
+    for f in findings:
+        bf = _baseline_fingerprint(f.file, f.line_no, f.pattern)
+        if bf not in existing_fps:
+            existing.append({
+                "fingerprint": bf,
+                "reason": reason or "aceptado via --update-baseline",
+                "added": now,
+                "pattern": f.pattern,
+                "file": f.file,
+                "line": f.line_no,
+                "severity": f.severity.value,
+            })
+            existing_fps.add(bf)
+            nuevos += 1
+
+    out = {
+        "version": "1.0",
+        "_generado_por": f"{TOOL_NAME} v{VERSION}",
+        "_nota": (
+            "Baseline de hallazgos aceptados. Cada entrada se identifica por el "
+            "fingerprint SHA-256 del contexto (fichero+línea+patrón), NO por el "
+            "valor del secreto en claro. Si el secreto cambia de línea, reaparecerá."
+        ),
+        "accepted": existing,
+    }
+    Path(path).write_text(json.dumps(out, indent=2, ensure_ascii=False), encoding="utf-8")
+    console.print(
+        f"[green]  ✔ Baseline actualizado: {nuevos} nuevas entradas "
+        f"({len(existing)} total) → {path}[/]"
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Exportación SARIF 2.1.0
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -1424,6 +1551,20 @@ def parse_args() -> argparse.Namespace:
                     help="Fichero JSON con falsos positivos a ignorar")
     al.add_argument("--generate-allowlist",  metavar="FICHERO",
                     help="Generar allowlist JSON a partir de los hallazgos actuales y salir")
+
+    bl = p.add_argument_group("Baseline")
+    bl.add_argument("--baseline", metavar="FICHERO",
+                    help=(
+                        "Fichero JSON de baseline con hallazgos aceptados "
+                        "(default: .vamp-secrets-baseline.json en el directorio objetivo si existe). "
+                        "Los hallazgos en el baseline no se reportan ni generan error en CI."
+                    ))
+    bl.add_argument("--update-baseline", action="store_true",
+                    help=(
+                        "Añadir todos los hallazgos actuales al baseline y salir con código 0. "
+                        "Útil para aceptar el estado actual tras una revisión. "
+                        "El baseline se crea si no existe (default: .vamp-secrets-baseline.json)."
+                    ))
 
     ci = p.add_argument_group("Integración CI/CD")
     ci.add_argument("--install-hook",        action="store_true",
@@ -1904,6 +2045,35 @@ def main() -> None:
     if args.generate_allowlist:
         generate_allowlist(filtered, args.generate_allowlist)
         console.print("[dim]  Usa --allowlist con ese fichero para suprimir los hallazgos en próximas ejecuciones.[/]")
+        sys.exit(0)
+
+    # ── Baseline — filtrar hallazgos ya aceptados ─────────────────────────────
+    # Buscar el fichero baseline: --baseline explícito o .vamp-secrets-baseline.json en el objetivo
+    _baseline_path: Optional[str] = getattr(args, "baseline", None)
+    if _baseline_path is None:
+        _default_bp = target / ".vamp-secrets-baseline.json"
+        if _default_bp.exists():
+            _baseline_path = str(_default_bp)
+
+    if _baseline_path:
+        _accepted = load_baseline(_baseline_path)
+        if _accepted:
+            filtered = apply_baseline(filtered, _accepted)
+            _n_bl = sum(1 for f in filtered if f.allowlisted)
+            if _n_bl:
+                console.print(
+                    f"[dim]  {_n_bl} hallazgo(s) suprimido(s) por el baseline ({_baseline_path})[/]"
+                )
+            filtered = [f for f in filtered if not f.allowlisted]
+
+    # ── Actualizar baseline (--update-baseline) ───────────────────────────────
+    if getattr(args, "update_baseline", False):
+        _bp_dest = _baseline_path or str(target / ".vamp-secrets-baseline.json")
+        update_baseline(filtered, _bp_dest)
+        console.print(
+            "[dim]  Próximas ejecuciones ignorarán estos hallazgos. "
+            "Usa --baseline para aplicar el filtro.[/]"
+        )
         sys.exit(0)
 
     # ── Mostrar resultados ────────────────────────────────────────────────────
