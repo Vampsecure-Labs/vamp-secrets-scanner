@@ -86,6 +86,7 @@ AUTORÍA
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import math
@@ -110,7 +111,7 @@ from rich.text import Text
 # Constantes
 # ─────────────────────────────────────────────────────────────────────────────
 
-VERSION   = "2.3"
+VERSION   = "2.4"
 TOOL_NAME = "vamp-secrets-scanner"
 
 BANNER = r"""
@@ -119,7 +120,7 @@ __   ___   __  __ ___  ___ ___ ___ _   _ ___ ___ _      _   ___ ___
  \ V / _ \| |\/| |  _/\__ \ _| (__| |_| |   / _|| |__ / _ \| _ \__ \
   \_/_/ \_\_|  |_|_|  |___/___\___|\___/|_|_\___|____/_/ \_\___/___/
   by Antonio Hernandez "Belky" — VampSecure Studios
-  vamp-secrets-scanner v2.3 · Static Secrets & Git History Scanner
+  vamp-secrets-scanner v2.4 · Static Secrets & Git History Scanner
   ────────────────────────────────────────────────────────────────────────
   USO EXCLUSIVO EN AUDITORÍAS AUTORIZADAS · El uso no autorizado es ilegal
 """
@@ -1660,6 +1661,167 @@ def scan_all_docker_containers() -> List[Finding]:
     return todos_hallazgos
 
 
+def _scan_string_for_secrets(texto: str) -> List[Dict]:
+    """
+    Aplica todos los SECRET_PATTERNS a una cadena de texto y devuelve
+    una lista de coincidencias brutas (sin crear objetos Finding).
+
+    Cada elemento del resultado es un dict con las claves:
+      - 'name':     nombre del patrón coincidente
+      - 'severity': nivel de severidad del patrón
+      - 'category': categoría del patrón
+      - 'valor':    fragmento de texto que coincidió (sin censurar)
+
+    Útil como auxiliar en funciones de escaneo de entornos externos
+    (Docker runtime, Kubernetes Secrets, etc.) donde el contexto
+    de creación del Finding difiere del flujo estático habitual.
+    """
+    coincidencias: List[Dict] = []
+    for pat in SECRET_PATTERNS:
+        match = pat["compiled"].search(texto)
+        if match:
+            coincidencias.append({
+                "name":     pat["name"],
+                "severity": pat["severity"],
+                "category": pat.get("category", "Secret"),
+                "valor":    match.group(0),
+            })
+    return coincidencias
+
+
+def _kubectl_disponible() -> bool:
+    """Comprueba si el binario 'kubectl' está disponible en el PATH."""
+    try:
+        subprocess.run(
+            ["kubectl", "version", "--client", "--output=json"],
+            capture_output=True,
+            timeout=5,
+        )
+        return True
+    except (FileNotFoundError, OSError):
+        return False
+
+
+def scan_kubernetes_secrets(namespace: Optional[str] = None) -> List[Finding]:
+    """
+    Escanea los Kubernetes Secrets del clúster activo buscando credenciales
+    y datos sensibles codificados en base64.
+
+    Parámetros:
+      namespace: si se indica, limita la búsqueda a ese namespace;
+                 si es None se escanean todos los namespaces.
+
+    Requiere que 'kubectl' esté disponible en el PATH y que el contexto
+    activo tenga permisos de lectura sobre los Secrets del namespace indicado.
+
+    Retorna una lista de objetos Finding con los secretos detectados.
+    """
+    if not _kubectl_disponible():
+        console.print("[yellow]  Aviso: 'kubectl' no encontrado en PATH — omitiendo escaneo de K8s Secrets[/]")
+        return []
+
+    # Construir comando kubectl
+    if namespace:
+        cmd = ["kubectl", "get", "secret", "-n", namespace, "-o", "json"]
+        scope_label = f"namespace '{namespace}'"
+    else:
+        cmd = ["kubectl", "get", "secret", "--all-namespaces", "-o", "json"]
+        scope_label = "todos los namespaces"
+
+    console.print(f"[cyan]  Consultando Kubernetes Secrets ({scope_label})...[/]")
+
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except subprocess.TimeoutExpired:
+        console.print("[red]  Tiempo de espera agotado ejecutando 'kubectl get secret'[/]")
+        return []
+    except (FileNotFoundError, OSError) as exc:
+        console.print(f"[red]  Error ejecutando kubectl: {exc}[/]")
+        return []
+
+    if result.returncode != 0:
+        console.print(f"[red]  kubectl salió con código {result.returncode}: {result.stderr.strip()[:200]}[/]")
+        return []
+
+    try:
+        data = json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        console.print(f"[red]  Error parseando salida JSON de kubectl: {exc}[/]")
+        return []
+
+    # Puede ser una lista (--all-namespaces) o un objeto único
+    items = data.get("items", [data]) if "items" in data else [data]
+    hallazgos: List[Finding] = []
+
+    for secret in items:
+        meta = secret.get("metadata", {})
+        ns   = meta.get("namespace", "default")
+        name = meta.get("name", "desconocido")
+        tipo = secret.get("type", "")
+        datos = secret.get("data") or {}
+
+        for clave, valor_b64 in datos.items():
+            # Decodificar el valor base64
+            try:
+                valor_decoded = base64.b64decode(valor_b64).decode("utf-8", errors="replace")
+            except Exception:
+                continue
+
+            # Buscar patrones de secreto en el valor decodificado
+            coincidencias = _scan_string_for_secrets(valor_decoded)
+
+            # También escanear la clave (puede revelar el tipo de secreto)
+            clave_coincidencias = _scan_string_for_secrets(clave)
+
+            # Usar el valor decodificado si no hay coincidencias por patrón
+            # pero la clave sugiere que es un secreto
+            claves_sensibles = {"password", "passwd", "secret", "token", "key",
+                                 "apikey", "api_key", "private_key", "auth"}
+            es_clave_sensible = any(k in clave.lower() for k in claves_sensibles)
+
+            if not coincidencias and es_clave_sensible:
+                # Hallazgo genérico basado en nombre de clave
+                fp = _fingerprint(valor_decoded, f"K8S_SECRET_KEY:{clave}")
+                extracto = _censor(valor_decoded[:120])
+                hallazgos.append(Finding(
+                    file=f"k8s://{ns}/{name}",
+                    line_no=0,
+                    pattern=f"K8S_SECRET_KEY: {clave} (tipo: {tipo})",
+                    category="Kubernetes · Secret",
+                    severity=Severity.HIGH,
+                    preview=extracto,
+                    context=[f"namespace={ns}", f"secret={name}", f"tipo={tipo}", f"clave={clave}"],
+                    fingerprint=fp,
+                ))
+            else:
+                for c in coincidencias:
+                    fp = _fingerprint(c["valor"], f"K8S_SECRET:{ns}/{name}/{clave}")
+                    extracto = _censor(c["valor"])
+                    hallazgos.append(Finding(
+                        file=f"k8s://{ns}/{name}",
+                        line_no=0,
+                        pattern=f"K8S_SECRET: {c['name']} (clave: {clave})",
+                        category="Kubernetes · Secret",
+                        severity=c["severity"],
+                        preview=extracto,
+                        context=[f"namespace={ns}", f"secret={name}", f"tipo={tipo}",
+                                 f"clave={clave}", f"patron={c['name']}"],
+                        fingerprint=fp,
+                    ))
+
+    if hallazgos:
+        console.print(f"[dim]  {len(hallazgos)} hallazgo(s) en Kubernetes Secrets[/]")
+    else:
+        console.print("[dim]  Sin secretos detectados en Kubernetes Secrets[/]")
+
+    return hallazgos
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # CLI
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1744,6 +1906,17 @@ def parse_args() -> argparse.Namespace:
                         dest="scan_all_containers",
                         help="Escanear todos los contenedores Docker actualmente en ejecución "
                              "('docker ps -q'). Requiere que 'docker' esté disponible en el PATH.")
+
+    k8s = p.add_argument_group("Escaneo Kubernetes Secrets (v2.4)")
+    k8s.add_argument("--k8s", action="store_true",
+                     dest="k8s",
+                     help="Escanear los Kubernetes Secrets del clúster activo (todos los namespaces). "
+                          "Requiere que 'kubectl' esté disponible en el PATH y que el contexto "
+                          "activo tenga permisos de lectura sobre los Secrets.")
+    k8s.add_argument("--k8s-namespace", metavar="NS",
+                     dest="k8s_namespace", default=None,
+                     help="Limitar el escaneo de K8s Secrets a un namespace concreto "
+                          "(implica --k8s). Ej: --k8s-namespace production")
 
     ci = p.add_argument_group("Integración CI/CD")
     ci.add_argument("--install-hook",        action="store_true",
@@ -2222,6 +2395,21 @@ def main() -> None:
         else:
             console.print("[dim]  Sin secretos detectados en los contenedores en ejecución[/]\n")
         all_findings.extend(docker_findings)
+
+    # ── Fase 2e: escaneo de Kubernetes Secrets (v2.4) ────────────────────────
+    _k8s_ns = getattr(args, "k8s_namespace", None)
+    _k8s    = getattr(args, "k8s", False) or bool(_k8s_ns)
+
+    if _k8s:
+        console.print("[bold cyan]  FASE 2e[/] — Escaneando Kubernetes Secrets...")
+        k8s_findings = scan_kubernetes_secrets(namespace=_k8s_ns)
+        if k8s_findings:
+            console.print(
+                f"[dim]  {len(k8s_findings)} hallazgo(s) en Kubernetes Secrets[/]\n"
+            )
+        else:
+            console.print("[dim]  Sin secretos detectados en Kubernetes Secrets[/]\n")
+        all_findings.extend(k8s_findings)
 
     # ── Deduplicación y filtrado ──────────────────────────────────────────────
     seen: Set[str] = set()
