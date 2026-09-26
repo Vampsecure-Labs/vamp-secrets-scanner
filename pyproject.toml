@@ -7,7 +7,7 @@ name = "vamp-secrets-scanner"
 version = "2.4"
 description = "Static secrets and credentials scanner with git history analysis, Shannon entropy detection, SARIF 2.1.0 output, Docker runtime scanning and Kubernetes Secrets scanning"
 readme = "README.md"
-license = { text = "MIT" }
+license = { text = "AGPL-3.0-only" }
 requires-python = ">=3.10"
 authors = [{ name = "VampSecure Studios", email = "contact@vampsecurestudios.com" }]
 keywords = ["security", "secrets", "credentials", "scanner", "pentest", "sast", "sarif", "entropy"]
@@ -16,7 +16,7 @@ classifiers = [
     "Environment :: Console",
     "Intended Audience :: Information Technology",
     "Intended Audience :: System Administrators",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
