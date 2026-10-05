@@ -86,20 +86,20 @@ AUTORÍA
 from __future__ import annotations
 
 import argparse
+import asyncio
 import base64
 import hashlib
 import json
 import math
-import os
 import re
 import subprocess
 import sys
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from html import escape
 from pathlib import Path
-from typing import Dict, Iterator, List, Optional, Set, Tuple
+from typing import Dict, Iterator, List, Optional, Set
 
 from rich.console import Console
 from rich.markup import escape as markup_escape
@@ -1776,7 +1776,7 @@ def scan_kubernetes_secrets(namespace: Optional[str] = None) -> List[Finding]:
             coincidencias = _scan_string_for_secrets(valor_decoded)
 
             # También escanear la clave (puede revelar el tipo de secreto)
-            clave_coincidencias = _scan_string_for_secrets(clave)
+            _scan_string_for_secrets(clave)
 
             # Usar el valor decodificado si no hay coincidencias por patrón
             # pero la clave sugiere que es un secreto
@@ -2052,7 +2052,9 @@ if [ ! -f "$SCANNER" ]; then
 fi
 
 echo "[vamp-secrets-scanner] Escaneando secretos antes del commit..."
-python3 "$SCANNER" "$TARGET" --min-severity MEDIUM 2>&1
+ALLOWLIST_OPT=""
+[ -f "$TARGET/.vamp-allowlist.json" ] && ALLOWLIST_OPT="--allowlist $TARGET/.vamp-allowlist.json"
+python3 "$SCANNER" "$TARGET" --min-severity MEDIUM $ALLOWLIST_OPT 2>&1
 CODE=$?
 
 if [ $CODE -ge 1 ]; then
@@ -2068,7 +2070,7 @@ exit 0
     hook_path.write_text(hook_script, encoding="utf-8")
     hook_path.chmod(0o755)
     console.print(f"[bold green]  ✔ Hook pre-commit instalado: {hook_path}[/]")
-    console.print(f"[dim]  Cada commit escaneará el árbol de trabajo completo (MEDIUM+).[/]")
+    console.print("[dim]  Cada commit escaneará el árbol de trabajo completo (MEDIUM+).[/]")
     console.print(f"[dim]  Para desinstalar: rm {hook_path}[/]")
 
 
@@ -2101,6 +2103,95 @@ def _extract_raw_value(finding: "Finding") -> Optional[str]:
     return None
 
 
+async def _check_aws_credentials_pair(
+    session, access_key: str, secret_key: str
+) -> Optional[bool]:
+    """
+    Verifica un par de credenciales AWS (Access Key ID + Secret Access Key)
+    mediante STS GetCallerIdentity. No requiere permisos IAM: la llamada
+    siempre está disponible para credenciales válidas.
+
+    Implementa AWS Signature Version 4 con hmac+hashlib (sin boto3).
+    Retorna True si las credenciales son válidas, False si están revocadas,
+    None si no se pudo determinar.
+    """
+    import hashlib as _hl
+    import hmac as _hm
+    import datetime as _dt
+
+    host = "sts.amazonaws.com"
+    region = "us-east-1"
+    service = "sts"
+    payload = "Action=GetCallerIdentity&Version=2011-06-15"
+    content_type = "application/x-www-form-urlencoded; charset=utf-8"
+
+    now = _dt.datetime.utcnow()
+    amz_date = now.strftime("%Y%m%dT%H%M%SZ")
+    date_stamp = now.strftime("%Y%m%d")
+
+    canonical_headers = (
+        f"content-type:{content_type}\nhost:{host}\nx-amz-date:{amz_date}\n"
+    )
+    signed_headers = "content-type;host;x-amz-date"
+    payload_hash = _hl.sha256(payload.encode()).hexdigest()
+
+    canonical_request = "\n".join([
+        "POST", "/", "",
+        canonical_headers,
+        signed_headers,
+        payload_hash,
+    ])
+
+    credential_scope = f"{date_stamp}/{region}/{service}/aws4_request"
+    string_to_sign = "\n".join([
+        "AWS4-HMAC-SHA256",
+        amz_date,
+        credential_scope,
+        _hl.sha256(canonical_request.encode()).hexdigest(),
+    ])
+
+    def _sign(key: bytes, msg: str) -> bytes:
+        return _hm.new(key, msg.encode(), _hl.sha256).digest()
+
+    signing_key = _sign(
+        _sign(_sign(_sign(f"AWS4{secret_key}".encode(), date_stamp), region), service),
+        "aws4_request",
+    )
+    signature = _hm.new(signing_key, string_to_sign.encode(), _hl.sha256).hexdigest()
+
+    auth = (
+        f"AWS4-HMAC-SHA256 Credential={access_key}/{credential_scope}, "
+        f"SignedHeaders={signed_headers}, Signature={signature}"
+    )
+    headers = {
+        "Content-Type": content_type,
+        "Host": host,
+        "X-Amz-Date": amz_date,
+        "Authorization": auth,
+    }
+
+    try:
+        async with session.post(
+            f"https://{host}/",
+            data=payload,
+            headers=headers,
+            timeout=12,
+            ssl=True,
+        ) as r:
+            body = await r.text()
+            # 200 = credenciales válidas; 403 con InvalidClientTokenId = key no existe
+            if r.status == 200:
+                return True
+            if r.status == 403 and "InvalidClientTokenId" in body:
+                return False
+            # 403 con SignatureDoesNotMatch = key existe pero secret incorrecto
+            if r.status == 403 and "SignatureDoesNotMatch" in body:
+                return True   # la key existe, aunque el secret aquí sea incorrecto
+    except Exception:
+        pass
+    return None
+
+
 async def _check_secret_active(session, category: str, value: str) -> Optional[bool]:
     """
     Hace una petición mínima a la API del proveedor para saber si el
@@ -2114,7 +2205,6 @@ async def _check_secret_active(session, category: str, value: str) -> Optional[b
     import base64 as _b64
     import re as _re
     try:
-        timeout_cfg = {"total": 10}
         UA = f"{TOOL_NAME}/{VERSION}"
 
         if "AWS" in category and _re.match(r"(AKIA|AGPA|AIPA|ANPA|ANVA|AROA|ASCA|ASIA)", value):
@@ -2166,10 +2256,15 @@ async def _check_secret_active(session, category: str, value: str) -> Optional[b
 async def _run_verification(findings: "List[Finding]") -> None:
     """
     Verifica activamente los secretos CRITICAL/HIGH de los hallazgos.
-    Imprime en consola qué secretos siguen activos, cuáles están revocados
-    y cuáles no se pudieron comprobar.
+
+    Para AWS: agrupa los hallazgos por fichero fuente y empareja el
+    Access Key ID con el Secret Access Key del mismo fichero para
+    realizar una llamada STS GetCallerIdentity (verificación real).
+
+    Para el resto: GitHub, Stripe, Slack, Telegram con llamada individual.
     """
     import aiohttp as _aiohttp
+    from collections import defaultdict as _dd
 
     VERIFICABLES = {"Cloud · AWS", "VCS · GitHub", "Pagos · Stripe",
                     "Comunicaciones · Slack", "Comunicaciones · Telegram"}
@@ -2189,8 +2284,58 @@ async def _run_verification(findings: "List[Finding]") -> None:
 
     activos = revocados = sin_datos = 0
 
+    # ── Agrupar hallazgos AWS por fichero para emparejar key+secret ──────────
+    aws_por_fichero: dict = _dd(lambda: {"key_id": None, "secret": None, "key_finding": None, "secret_finding": None})
+    aws_ids: set = set()
+
+    for f in candidatos:
+        if "AWS" in f.category:
+            raw = _extract_raw_value(f)
+            if not raw:
+                continue
+            entry = aws_por_fichero[f.file]
+            import re as _re_aws
+            if _re_aws.match(r"(AKIA|AGPA|AIPA|ANPA|ANVA|AROA|ASCA|ASIA)[A-Z0-9]{16}", raw):
+                entry["key_id"] = raw
+                entry["key_finding"] = f
+            elif len(raw) == 40 and _re_aws.match(r"[A-Za-z0-9/+=]{40}", raw):
+                entry["secret"] = raw
+                entry["secret_finding"] = f
+            aws_ids.add(id(f))
+
     async with _aiohttp.ClientSession() as session:
+        # ── Verificar pares AWS (key + secret del mismo fichero) ─────────────
+        for filepath, entry in aws_por_fichero.items():
+            if not (entry["key_id"] and entry["secret"]):
+                # Par incompleto: marcar ambos como indeterminados
+                for fnd in (entry["key_finding"], entry["secret_finding"]):
+                    if fnd:
+                        sin_datos += 1
+                        console.print(
+                            f"  [dim]? indeterminado[/] {fnd.pattern} — AWS key sin secreto parejado "
+                            f"en {fnd.file}:{fnd.line_no}"
+                        )
+                continue
+
+            status = await _check_aws_credentials_pair(session, entry["key_id"], entry["secret"])
+            key_preview = entry["key_id"][:8] + "…"
+            label = f"AWS key pair [{key_preview}] — {filepath}"
+
+            if status is True:
+                activos += 1
+                console.print(f"  [bold red]✖ ACTIVO[/]   {label}")
+            elif status is False:
+                revocados += 1
+                console.print(f"  [green]✔ revocado[/] {label}")
+            else:
+                sin_datos += 1
+                console.print(f"  [dim]? indeterminado[/] {label}")
+
+        # ── Verificar el resto (no-AWS) ──────────────────────────────────────
         for finding in candidatos:
+            if id(finding) in aws_ids:
+                continue  # ya procesado arriba
+
             raw = _extract_raw_value(finding)
             if not raw:
                 sin_datos += 1
@@ -2273,20 +2418,20 @@ def _export_semgrep_rules(output_file: str) -> None:
 
         lines += [
             f"  - id: {rule_id}",
-            f"    patterns:",
-            f"      - pattern-regex: |-",
+            "    patterns:",
+            "      - pattern-regex: |-",
             f"          {regex}",
-            f"    message: >-",
+            "    message: >-",
             f"      {msg_title} detectado [{category}].",
-            f"      Eliminar inmediatamente y rotar las credenciales afectadas.",
+            "      Eliminar inmediatamente y rotar las credenciales afectadas.",
             f"    severity: {sev}",
-            f"    languages:",
-            f"      - generic",
-            f"    metadata:",
+            "    languages:",
+            "      - generic",
+            "    metadata:",
             f'      category: "{category}"',
             f"      vsl_severity: {pat['severity']}",
-            f"      source: vamp-secrets-scanner",
-            f"      fix: Eliminar el secreto del código y rotar credenciales.",
+            "      source: vamp-secrets-scanner",
+            "      fix: Eliminar el secreto del código y rotar credenciales.",
             "",
         ]
 
@@ -2330,7 +2475,7 @@ def main() -> None:
 
     console.print(f"  Objetivo: [cyan]{target}[/]")
     if args.git_history:
-        console.print(f"  Modo: [bold yellow]árbol actual + historial git[/]"
+        console.print("  Modo: [bold yellow]árbol actual + historial git[/]"
                       + (f" (últimos {args.max_commits} commits)" if args.max_commits else ""))
     console.print()
 

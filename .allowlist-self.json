@@ -1,6 +1,97 @@
 {
-  "_nota": "Allowlist de falsos positivos del propio scanner al escanearse a sí mismo.",
+  "_generado_por": "vamp-secrets-scanner v2.4",
+  "_fecha": "2026-10-05T14:06:28.002702+00:00",
+  "_nota": "Edita esta allowlist para suprimir falsos positivos conocidos. Elimina entradas para que vuelvan a reportarse.",
   "allowlist": [
-    {"file": "vamp_secrets_scanner.py"}
+    {
+      "fingerprint": "3baae690336a",
+      "pattern": "AWS Access Key ID",
+      "file": "/Users/belky/Proyectos/VampSecureLabs/vamp-secrets-scanner/README.md"
+    },
+    {
+      "fingerprint": "c9b8369b31cd",
+      "pattern": "AWS Secret Access Key",
+      "file": "/Users/belky/Proyectos/VampSecureLabs/vamp-secrets-scanner/tests/conftest.py"
+    },
+    {
+      "fingerprint": "dcc82de60ea7",
+      "pattern": "GitHub PAT (classic)",
+      "file": "/Users/belky/Proyectos/VampSecureLabs/vamp-secrets-scanner/tests/conftest.py"
+    },
+    {
+      "fingerprint": "f9821460f0cf",
+      "pattern": "GitHub Actions Secret",
+      "file": "/Users/belky/Proyectos/VampSecureLabs/vamp-secrets-scanner/tests/conftest.py"
+    },
+    {
+      "fingerprint": "5e9645207c24",
+      "pattern": "Slack Webhook URL",
+      "file": "/Users/belky/Proyectos/VampSecureLabs/vamp-secrets-scanner/tests/conftest.py"
+    },
+    {
+      "fingerprint": "d6e8586c07f3",
+      "pattern": "RSA Private Key (PEM)",
+      "file": "/Users/belky/Proyectos/VampSecureLabs/vamp-secrets-scanner/tests/conftest.py"
+    },
+    {
+      "fingerprint": "d0687a5dc887",
+      "pattern": "NIF/CIF empresa española",
+      "file": "/Users/belky/Proyectos/VampSecureLabs/vamp-secrets-scanner/tests/conftest.py"
+    },
+    {
+      "fingerprint": "df1464159bdf",
+      "pattern": "Secret genérico",
+      "file": "/Users/belky/Proyectos/VampSecureLabs/vamp-secrets-scanner/tests/conftest.py"
+    },
+    {
+      "fingerprint": "1ecb8c4144a4",
+      "pattern": "Token genérico",
+      "file": "/Users/belky/Proyectos/VampSecureLabs/vamp-secrets-scanner/tests/conftest.py"
+    },
+    {
+      "fingerprint": "417526a32bb5",
+      "pattern": "Token genérico",
+      "file": "/Users/belky/Proyectos/VampSecureLabs/vamp-secrets-scanner/tests/conftest.py"
+    },
+    {
+      "fingerprint": "f57d2935ff0b",
+      "pattern": "Stripe Live Secret Key",
+      "file": "/Users/belky/Proyectos/VampSecureLabs/vamp-secrets-scanner/tests/test_integration.py"
+    },
+    {
+      "fingerprint": "45dea44431db",
+      "pattern": "Token genérico",
+      "file": "/Users/belky/Proyectos/VampSecureLabs/vamp-secrets-scanner/tests/test_integration.py"
+    },
+    {
+      "fingerprint": "4e5fcf3dc15c",
+      "pattern": "Slack Webhook URL",
+      "file": "/Users/belky/Proyectos/VampSecureLabs/vamp-secrets-scanner/tests/test_unit.py"
+    },
+    {
+      "fingerprint": "1d01aac904f6",
+      "pattern": "NIF/CIF empresa española",
+      "file": "/Users/belky/Proyectos/VampSecureLabs/vamp-secrets-scanner/tests/test_unit.py"
+    },
+    {
+      "fingerprint": "ee48ce031e84",
+      "pattern": "Token genérico",
+      "file": "/Users/belky/Proyectos/VampSecureLabs/vamp-secrets-scanner/tests/test_unit.py"
+    },
+    {
+      "fingerprint": "9c16f8ce67c2",
+      "pattern": "MySQL DSN con contraseña",
+      "file": "/Users/belky/Proyectos/VampSecureLabs/vamp-secrets-scanner/vamp_secrets_scanner.py"
+    },
+    {
+      "fingerprint": "6c4a6b02c617",
+      "pattern": "Redis URL con contraseña",
+      "file": "/Users/belky/Proyectos/VampSecureLabs/vamp-secrets-scanner/vamp_secrets_scanner.py"
+    },
+    {
+      "fingerprint": "4597762eea98",
+      "pattern": "NUSS (Seg. Social español)",
+      "file": "/Users/belky/Proyectos/VampSecureLabs/vamp-secrets-scanner/vamp_secrets_scanner.py"
+    }
   ]
 }

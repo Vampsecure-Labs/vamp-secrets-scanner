@@ -10,6 +10,7 @@
   <img src="https://img.shields.io/badge/platform-linux%20%7C%20macos-lightgrey?style=flat-square">
   <img src="https://img.shields.io/badge/license-research%20only-red?style=flat-square">
   <img src="https://img.shields.io/badge/VampSecure-Labs-8B0000?style=flat-square">
+  <img src="https://github.com/Vampsecure-Labs/vamp-secrets-scanner/actions/workflows/ci.yml/badge.svg" alt="CI"/>
 </p>
 
 ---
@@ -125,6 +126,41 @@ python vamp_secrets_scanner.py . --export-semgrep vampsec_rules.yaml
 **Scan only CRITICAL findings, raising entropy threshold to reduce noise:**
 ```bash
 python vamp_secrets_scanner.py . --only-critical --entropy-threshold 5.2
+```
+
+**Verify active AWS credentials when both access key + secret are found in the same file:**
+```bash
+python vamp_secrets_scanner.py . --verify
+```
+
+## Sample Output
+
+```
+  vamp-secrets-scanner v2.2 · 77 patterns · scanning: /repo/
+  ──────────────────────────────────────────────────────────────
+  [CRITICAL] AWS Access Key ID                  config.py:14
+             AKIAIOSFODNN7EXAMPLE
+             Remediation: revoke key immediately via IAM console
+
+  [CRITICAL] AWS Secret Access Key              config.py:15
+             wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+             Remediation: rotate in IAM > Security credentials
+
+  [HIGH]     GitHub Fine-Grained PAT            .env:3
+             github_pat_11AABBCC…
+             Remediation: revoke at github.com/settings/tokens
+
+  ────────────────────────────────────
+  Total: 3 findings (2 CRITICAL, 1 HIGH)
+  Exit code: 2
+
+  FASE EXTRA — Verificación activa (3 secretos)
+
+  ✖ ACTIVO   AWS key pair [AKIAIOSS…] — config.py
+  ? indeterminado GitHub Fine-Grained PAT [github_***] — .env:3
+
+  Verificación: 1 activos · 0 revocados · 2 sin datos
+  ⚠ ACCIÓN URGENTE: rota inmediatamente los secretos activos listados.
 ```
 
 ## Output Formats
