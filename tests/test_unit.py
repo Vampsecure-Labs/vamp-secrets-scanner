@@ -486,7 +486,7 @@ class TestDaemonMode:
 
     def test_version_es_25(self):
         from vamp_secrets_scanner import VERSION
-        assert VERSION == "2.6"
+        assert VERSION == "2.7.0"
 
 
 class TestDeltaScan:
@@ -542,4 +542,4 @@ class TestDeltaScan:
 
     def test_version_es_26(self):
         from vamp_secrets_scanner import VERSION
-        assert VERSION == "2.6"
+        assert VERSION == "2.7.0"

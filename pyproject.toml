@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vamp-secrets-scanner"
-version = "2.6"
-description = "Static secrets and credentials scanner with git history analysis, Shannon entropy detection, SARIF 2.1.0 output, Docker runtime scanning, Kubernetes Secrets scanning, daemon watch mode, and delta scan"
+version = "2.7.0"
+description = "Static secrets and credentials scanner with git history analysis, Shannon entropy detection, SARIF 2.1.0 output, Docker runtime scanning, Kubernetes Secrets scanning, daemon watch mode, delta scan · librería importable"
 readme = "README.md"
 license = { text = "AGPL-3.0-only" }
 requires-python = ">=3.10"
@@ -28,7 +28,7 @@ classifiers = [
 dependencies = ["rich>=13.7.0"]
 
 [project.scripts]
-vamp-secrets-scanner = "vamp_secrets_scanner:main"
+vamp-secrets-scanner = "vamp_secrets_scanner.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/Vampsecure-Labs/vamp-secrets-scanner"
@@ -36,4 +36,5 @@ Repository = "https://github.com/Vampsecure-Labs/vamp-secrets-scanner"
 "Bug Tracker" = "https://github.com/Vampsecure-Labs/vamp-secrets-scanner/issues"
 
 [tool.setuptools]
-py-modules = ["vamp_secrets_scanner"]
+packages = ["vamp_secrets_scanner"]
+py-modules = ["vampsec_report"]
