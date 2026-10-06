@@ -486,4 +486,60 @@ class TestDaemonMode:
 
     def test_version_es_25(self):
         from vamp_secrets_scanner import VERSION
-        assert VERSION == "2.5"
+        assert VERSION == "2.6"
+
+
+class TestDeltaScan:
+    """Tests para --delta FILE (delta scan, v2.6)."""
+
+    def _make_finding(self, fingerprint: str, pattern: str = "AWS_KEY", severity: str = "CRITICAL") -> object:
+        from vamp_secrets_scanner import Finding, Severity
+        return Finding(
+            file="test.py", line_no=1, pattern=pattern,
+            category="Cloud · AWS", severity=Severity(severity),
+            preview="REDACTED", context=[], fingerprint=fingerprint,
+        )
+
+    def test_apply_delta_scan_marca_new_y_recurring(self, tmp_path):
+        import json
+        from vamp_secrets_scanner import apply_delta_scan
+        baseline = {
+            "findings": [{"fingerprint": "aaa111", "pattern": "OLD", "file": "x.py", "line_no": 1}]
+        }
+        bp = tmp_path / "baseline.json"
+        bp.write_text(json.dumps(baseline))
+        f_new = self._make_finding("bbb222")
+        f_rec = self._make_finding("aaa111")
+        marked, resolved = apply_delta_scan([f_new, f_rec], str(bp))
+        assert f_new.delta_state == "new"
+        assert f_rec.delta_state == "recurring"
+        assert len(resolved) == 0
+
+    def test_apply_delta_scan_detecta_resolved(self, tmp_path):
+        import json
+        from vamp_secrets_scanner import apply_delta_scan
+        baseline = {
+            "findings": [
+                {"fingerprint": "gone111", "pattern": "OLD", "file": "x.py", "line_no": 1},
+                {"fingerprint": "aaa111", "pattern": "KEEP", "file": "x.py", "line_no": 2},
+            ]
+        }
+        bp = tmp_path / "baseline.json"
+        bp.write_text(json.dumps(baseline))
+        f_rec = self._make_finding("aaa111")
+        marked, resolved = apply_delta_scan([f_rec], str(bp))
+        assert len(resolved) == 1
+        assert resolved[0]["fingerprint"] == "gone111"
+
+    def test_argparser_acepta_delta(self):
+        import sys
+        from unittest.mock import patch
+        import argparse
+        with patch.object(sys, "argv", ["vamp_secrets_scanner", ".", "--delta", "report.json"]):
+            from vamp_secrets_scanner import parse_args
+            args = parse_args()
+            assert args.delta == "report.json"
+
+    def test_version_es_26(self):
+        from vamp_secrets_scanner import VERSION
+        assert VERSION == "2.6"

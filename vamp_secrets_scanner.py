@@ -112,7 +112,7 @@ from rich.text import Text
 # Constantes
 # ─────────────────────────────────────────────────────────────────────────────
 
-VERSION   = "2.5"
+VERSION   = "2.6"
 TOOL_NAME = "vamp-secrets-scanner"
 
 BANNER = r"""
@@ -457,10 +457,13 @@ class Finding:
     git_author: Optional[str] = None  # autor del commit
     git_date:   Optional[str] = None  # fecha ISO del commit
     allowlisted: bool = False          # ignorado por la allowlist
+    delta_state: Optional[str] = None  # "new" | "recurring" cuando se usa --delta
 
     def to_dict(self) -> dict:
         d = asdict(self)
         d["severity"] = self.severity.value
+        if d.get("delta_state") is None:
+            del d["delta_state"]
         return d
 
 
@@ -1931,6 +1934,11 @@ def parse_args() -> argparse.Namespace:
         "--watch", type=int, metavar="SECONDS",
         help="Daemon mode: re-escanear cada N segundos, mostrar solo secretos NEW/RESOLVED",
     )
+    ci.add_argument(
+        "--delta", metavar="FILE",
+        help="Delta scan: comparar con un informe JSON previo (--output). "
+             "Muestra hallazgos como NEW/RECURRING y lista los RESOLVED.",
+    )
 
     # Argumentos de informe unificado VSL (--client, --engagement, --auditor,
     # --report-scope, --report-html, --report-pdf)
@@ -2494,6 +2502,30 @@ def _run_scan(args) -> List[Finding]:
     ]
 
 
+def apply_delta_scan(
+    findings: "List[Finding]", delta_path: str
+) -> "tuple[List[Finding], List[dict]]":
+    """
+    Compara hallazgos actuales con un informe JSON previo (--delta FILE).
+    Marca cada hallazgo como 'new' o 'recurring'.
+    Devuelve (findings_marcados, resolved_list).
+    resolved_list son los hallazgos del baseline que ya no aparecen.
+    """
+    try:
+        baseline_data = json.loads(Path(delta_path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"No se puede leer el delta baseline '{delta_path}': {exc}") from exc
+    baseline_fps = {f["fingerprint"] for f in baseline_data.get("findings", []) if "fingerprint" in f}
+    for f in findings:
+        f.delta_state = "recurring" if f.fingerprint in baseline_fps else "new"
+    current_fps = {f.fingerprint for f in findings}
+    resolved = [
+        f for f in baseline_data.get("findings", [])
+        if f.get("fingerprint") not in current_fps
+    ]
+    return findings, resolved
+
+
 def _daemon_loop(args, interval: int) -> None:
     """Re-scan every `interval` seconds; print only NEW / RESOLVED secrets."""
     import signal
@@ -2725,12 +2757,36 @@ def main() -> None:
         )
         sys.exit(0)
 
+    # ── Delta scan (--delta) ─────────────────────────────────────────────────
+    delta_resolved: List[dict] = []
+    if getattr(args, "delta", None):
+        try:
+            filtered, delta_resolved = apply_delta_scan(filtered, args.delta)
+            n_new = sum(1 for f in filtered if f.delta_state == "new")
+            n_rec = sum(1 for f in filtered if f.delta_state == "recurring")
+            console.print(
+                f"[bold cyan]  DELTA vs {args.delta}:[/] "
+                f"[bold green]{n_new} NEW[/] · [yellow]{n_rec} RECURRING[/] · "
+                f"[dim]{len(delta_resolved)} RESOLVED[/]"
+            )
+        except ValueError as exc:
+            console.print(f"[bold red]  [!] Delta error: {exc}[/]")
+
     # ── Mostrar resultados ────────────────────────────────────────────────────
     if not filtered:
         console.print("[bold green]  ✓ Sin hallazgos en el rango de severidad seleccionado.[/]")
     else:
         console.print(build_results_table(filtered, target))
         print_critical_panels(filtered, target)
+
+    # ── Mostrar RESOLVED si hay delta ─────────────────────────────────────────
+    if delta_resolved:
+        console.print("\n[bold green]  ✅ RESUELTOS desde el baseline:[/]")
+        for r in delta_resolved:
+            sev = r.get("severity", "").upper()
+            pat = r.get("pattern", "?")
+            loc = f"{r.get('file', '?')}:{r.get('line_no', '?')}"
+            console.print(f"[dim]    [-RESOLVED] [{sev:8s}] {pat}: {loc}[/]")
 
     # ── Resumen ───────────────────────────────────────────────────────────────
     n_crit = sum(1 for f in filtered if f.severity == Severity.CRITICAL)
@@ -2744,6 +2800,8 @@ def main() -> None:
                f"{n_crit} CRÍTICO · {n_high} ALTO · {n_med} MEDIO · {n_low} BAJO")
     if n_git:
         resumen += f" · {n_git} en historial git"
+    if getattr(args, "delta", None) and delta_resolved is not None:
+        resumen += f" · {len(delta_resolved)} RESOLVED"
     console.print(resumen + "[/]")
 
     # ── Verificación activa de secretos (--verify) ───────────────────────────
