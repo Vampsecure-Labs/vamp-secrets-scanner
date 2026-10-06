@@ -409,3 +409,81 @@ class TestCheckAwsCredentialsPair:
         )
         url = mock_session.post.call_args.args[0]
         assert "sts.amazonaws.com" in url
+
+
+# ---------------------------------------------------------------------------
+# Tests de daemon mode (--watch) — v2.5
+# ---------------------------------------------------------------------------
+
+class TestDaemonMode:
+    """Tests del modo daemon (_run_scan, _daemon_loop)."""
+
+    def test_run_scan_retorna_lista(self, tmp_path):
+        """_run_scan sobre un directorio vacío retorna lista (puede ser vacía)."""
+        import argparse
+        from vamp_secrets_scanner import _run_scan
+
+        args = argparse.Namespace(
+            target=str(tmp_path),
+            only_critical=False,
+            min_severity="MEDIUM",
+            no_entropy=True,
+            entropy_threshold=4.5,
+            max_depth=None,
+            all_extensions=False,
+            git_history=False,
+            max_commits=None,
+            scan_container=None,
+            scan_all_containers=False,
+            k8s=False,
+            k8s_namespace=None,
+            allowlist=None,
+        )
+        findings = _run_scan(args)
+        assert isinstance(findings, list)
+
+    def test_run_scan_detecta_secret_en_fichero(self, tmp_path):
+        """_run_scan detecta un token AWS hardcodeado."""
+        import argparse
+        from vamp_secrets_scanner import _run_scan
+
+        (tmp_path / "config.py").write_text(
+            'AWS_KEY = "AKIAIOSFODNN7EXAMPLE"\n'
+            'AWS_SECRET = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"\n'
+        )
+        args = argparse.Namespace(
+            target=str(tmp_path),
+            only_critical=False,
+            min_severity="LOW",
+            no_entropy=False,
+            entropy_threshold=3.5,
+            max_depth=None,
+            all_extensions=False,
+            git_history=False,
+            max_commits=None,
+            scan_container=None,
+            scan_all_containers=False,
+            k8s=False,
+            k8s_namespace=None,
+            allowlist=None,
+        )
+        findings = _run_scan(args)
+        assert any("AKIA" in f.preview or "AWS" in f.pattern for f in findings)
+
+    def test_daemon_loop_argparser_acepta_watch(self):
+        """El parser acepta --watch como entero."""
+        import argparse
+        from vamp_secrets_scanner import parse_args as _parse
+        import sys
+
+        old_argv = sys.argv
+        sys.argv = ["vamp-secrets-scanner", ".", "--watch", "30"]
+        try:
+            args = _parse()
+            assert args.watch == 30
+        finally:
+            sys.argv = old_argv
+
+    def test_version_es_25(self):
+        from vamp_secrets_scanner import VERSION
+        assert VERSION == "2.5"

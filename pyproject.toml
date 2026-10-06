@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vamp-secrets-scanner"
-version = "2.4"
-description = "Static secrets and credentials scanner with git history analysis, Shannon entropy detection, SARIF 2.1.0 output, Docker runtime scanning and Kubernetes Secrets scanning"
+version = "2.5"
+description = "Static secrets and credentials scanner with git history analysis, Shannon entropy detection, SARIF 2.1.0 output, Docker runtime scanning, Kubernetes Secrets scanning, and daemon watch mode"
 readme = "README.md"
 license = { text = "AGPL-3.0-only" }
 requires-python = ">=3.10"

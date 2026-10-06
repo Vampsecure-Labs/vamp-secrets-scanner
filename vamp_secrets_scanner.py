@@ -99,6 +99,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from html import escape
 from pathlib import Path
+import time
 from typing import Dict, Iterator, List, Optional, Set
 
 from rich.console import Console
@@ -111,7 +112,7 @@ from rich.text import Text
 # Constantes
 # ─────────────────────────────────────────────────────────────────────────────
 
-VERSION   = "2.4"
+VERSION   = "2.5"
 TOOL_NAME = "vamp-secrets-scanner"
 
 BANNER = r"""
@@ -1926,6 +1927,10 @@ def parse_args() -> argparse.Namespace:
     ci.add_argument("--verify",              action="store_true",
                     help="Verificar activamente si los secretos CRITICAL/HIGH encontrados siguen "
                          "válidos (petición mínima a la API del proveedor; requiere aiohttp)")
+    ci.add_argument(
+        "--watch", type=int, metavar="SECONDS",
+        help="Daemon mode: re-escanear cada N segundos, mostrar solo secretos NEW/RESOLVED",
+    )
 
     # Argumentos de informe unificado VSL (--client, --engagement, --auditor,
     # --report-scope, --report-html, --report-pdf)
@@ -2440,6 +2445,106 @@ def _export_semgrep_rules(output_file: str) -> None:
     console.print(f"[dim]  Ejecutar: semgrep --config {output_file} <directorio>[/]")
 
 
+# ─── Daemon mode ──────────────────────────────────────────────────────────────
+
+def _run_scan(args) -> List[Finding]:
+    """Ejecuta todas las fases de escaneo y devuelve findings únicos filtrados."""
+    import io, contextlib
+
+    target = Path(args.target).resolve()
+    min_sev = Severity.CRITICAL if args.only_critical else Severity(args.min_severity)
+    entropy_threshold = float("inf") if args.no_entropy else args.entropy_threshold
+
+    all_findings: List[Finding] = []
+
+    # Silenciar salida verbose en modo daemon (solo stderr de cambios)
+    with contextlib.redirect_stdout(io.StringIO()):
+        files = list(discover_files(target, args.max_depth, args.all_extensions))
+        for f in files:
+            all_findings.extend(scan_file(f, entropy_threshold))
+
+        if getattr(args, "git_history", False) and _is_git_repo(target):
+            all_findings.extend(scan_git_history(target, entropy_threshold, args.max_commits))
+
+        all_findings.extend(scan_vault_misconfig(target))
+
+        if getattr(args, "scan_container", None):
+            all_findings.extend(scan_docker_container(args.scan_container))
+        elif getattr(args, "scan_all_containers", False):
+            all_findings.extend(scan_all_docker_containers())
+
+        if getattr(args, "k8s", False) or getattr(args, "k8s_namespace", None):
+            all_findings.extend(scan_kubernetes_secrets(namespace=getattr(args, "k8s_namespace", None)))
+
+    # Deduplicar por fingerprint
+    seen: Set[str] = set()
+    unique: List[Finding] = []
+    for f in all_findings:
+        if f.fingerprint not in seen:
+            seen.add(f.fingerprint)
+            unique.append(f)
+
+    if args.allowlist:
+        unique = apply_allowlist(unique, load_allowlist(args.allowlist))
+
+    return [
+        f for f in unique
+        if _SEVERITY_ORDER[f.severity] <= _SEVERITY_ORDER[min_sev]
+        and not f.allowlisted
+    ]
+
+
+def _daemon_loop(args, interval: int) -> None:
+    """Re-scan every `interval` seconds; print only NEW / RESOLVED secrets."""
+    import signal
+
+    prev_fps: set = set()
+    iteration = 0
+
+    def _stop(sig, frame):
+        print("\n[!] Daemon detenido.", file=sys.stderr)
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, _stop)
+    signal.signal(signal.SIGTERM, _stop)
+
+    print(
+        f"[*] Daemon mode — {args.target} — cada {interval}s — Ctrl+C para detener",
+        file=sys.stderr,
+    )
+
+    while True:
+        iteration += 1
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        print(f"\n── [{ts}] iter #{iteration} ──", file=sys.stderr)
+
+        try:
+            findings = _run_scan(args)
+        except Exception as exc:
+            print(f"  [!] Error en escaneo: {exc}", file=sys.stderr)
+            time.sleep(interval)
+            continue
+
+        current_fps = {f.fingerprint for f in findings}
+        new_fps = current_fps - prev_fps
+        resolved_fps = prev_fps - current_fps
+
+        if not new_fps and not resolved_fps:
+            print("[=] Sin cambios", file=sys.stderr)
+        else:
+            for f in sorted(findings, key=lambda x: x.fingerprint):
+                if f.fingerprint in new_fps:
+                    print(
+                        f"  [+NEW     ][{f.severity.value.upper():8s}] {f.pattern}: {f.file}:{f.line_no}",
+                        file=sys.stderr,
+                    )
+            for fp in sorted(resolved_fps):
+                print(f"  [-RESOLVED] {fp[:16]}…", file=sys.stderr)
+
+        prev_fps = current_fps
+        time.sleep(interval)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Punto de entrada
 # ─────────────────────────────────────────────────────────────────────────────
@@ -2449,6 +2554,10 @@ def main() -> None:
 
     args   = parse_args()
     target = Path(args.target).resolve()
+
+    if getattr(args, "watch", None) is not None:
+        _daemon_loop(args, args.watch)
+        return
 
     # ── Flags de acción directa (exportar/instalar) — no requieren escaneo ──
     if getattr(args, "export_semgrep", None):
