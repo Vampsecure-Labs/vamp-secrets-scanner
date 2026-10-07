@@ -1,0 +1,266 @@
+# © VampSecure Studios — VampSecure Labs Security Research Division
+# Patrones hardware security, cripto avanzado, gaming APIs y sistemas legacy
+format: "1.0"
+source: "VampSecure Labs — Hardware/Crypto/Gaming/Legacy patterns"
+rules:
+  # ── Hardware security / tokens ────────────────────────────────────────────
+  - id: VSS-HW-001
+    name: "YubiKey OTP secret key (20 bytes hex)"
+    severity: CRITICAL
+    category: "Hardware · YubiKey"
+    regex: "(?i)yubikey[_\\-\\s]*(otp[_\\-]*)?(secret|key)[\\s\\S]{0,20}['\"]([0-9a-f]{40})['\"]"
+
+  - id: VSS-HW-002
+    name: "PKCS#11 PIN / HSM PIN"
+    severity: HIGH
+    category: "Hardware · HSM"
+    regex: "(?i)(hsm|pkcs11|smartcard)[_\\-\\s]*(pin|password)[\\s\\S]{0,20}['\"]([^'\"\\s]{6,20})['\"]"
+
+  - id: VSS-HW-003
+    name: "Thales/nCipher HSM credentials"
+    severity: CRITICAL
+    category: "Hardware · HSM"
+    regex: "(?i)(ncipher|thales|safenet)[_\\-\\s]*(key|secret|password|token)[\\s\\S]{0,30}['\"]([A-Za-z0-9+/=]{20,})['\"]"
+
+  # ── Blockchain / Web3 avanzado ────────────────────────────────────────────
+  - id: VSS-WEB3-001
+    name: "Infura Project Secret"
+    severity: HIGH
+    category: "Web3 · Infura"
+    regex: "(?i)infura[_\\-\\s]*(project[_\\-]*)?(secret|key)[\\s\\S]{0,20}['\"]([a-f0-9]{32})['\"]"
+
+  - id: VSS-WEB3-002
+    name: "Alchemy API key"
+    severity: HIGH
+    category: "Web3 · Alchemy"
+    regex: "(?i)alchemy[_\\-\\s]*(api[_\\-]*)?(key|secret)[\\s\\S]{0,20}['\"]([A-Za-z0-9_\\-]{32,})['\"]"
+
+  - id: VSS-WEB3-003
+    name: "QuickNode endpoint secret"
+    severity: HIGH
+    category: "Web3 · QuickNode"
+    regex: "https://[a-z0-9\\-]+\\.quiknode\\.pro/[a-f0-9]{64}/"
+
+  - id: VSS-WEB3-004
+    name: "WalletConnect project ID"
+    severity: MEDIUM
+    category: "Web3 · WalletConnect"
+    regex: "(?i)walletconnect[_\\-\\s]*project[_\\-]*(id|key)[\\s\\S]{0,20}['\"]([a-f0-9]{32})['\"]"
+
+  - id: VSS-WEB3-005
+    name: "Moralis API key"
+    severity: HIGH
+    category: "Web3 · Moralis"
+    regex: "(?i)moralis[_\\-\\s]*(api[_\\-]*)?(key|secret)[\\s\\S]{0,20}['\"]([A-Za-z0-9]{40,})['\"]"
+
+  - id: VSS-WEB3-006
+    name: "Solana wallet private key (base58 88 chars)"
+    severity: CRITICAL
+    category: "Web3 · Solana"
+    regex: "(?i)(solana|sol)[_\\-\\s]*(private[_\\-]*)?(key|wallet)[\\s\\S]{0,20}['\"]([1-9A-HJ-NP-Za-km-z]{87,88})['\"]"
+
+  - id: VSS-WEB3-007
+    name: "TRON private key (64 hex)"
+    severity: CRITICAL
+    category: "Web3 · TRON"
+    regex: "(?i)tron[_\\-\\s]*(private[_\\-]*)?(key|wallet)[\\s\\S]{0,20}['\"]([a-f0-9]{64})['\"]"
+
+  # ── Gaming / Metaverse / Streaming ───────────────────────────────────────
+  - id: VSS-GAME-001
+    name: "Twitch Client Secret"
+    severity: HIGH
+    category: "Gaming · Twitch"
+    regex: "(?i)twitch[_\\-\\s]*(client[_\\-]*)?(secret|token)[\\s\\S]{0,20}['\"]([a-z0-9]{30})['\"]"
+
+  - id: VSS-GAME-002
+    name: "Discord Bot Token"
+    severity: CRITICAL
+    category: "Gaming · Discord"
+    regex: "(?i)discord[_\\-\\s]*(bot[_\\-]*)?(token|secret)[\\s\\S]{0,20}['\"]([MN][A-Za-z0-9]{23}\\.[A-Za-z0-9_\\-]{6}\\.[A-Za-z0-9_\\-]{27,})['\"]"
+
+  - id: VSS-GAME-003
+    name: "Steam Web API key"
+    severity: HIGH
+    category: "Gaming · Steam"
+    regex: "(?i)steam[_\\-\\s]*(web[_\\-]*)?(api[_\\-]*)?(key|token)[\\s\\S]{0,20}['\"]([A-F0-9]{32})['\"]"
+
+  - id: VSS-GAME-004
+    name: "Riot Games API key"
+    severity: HIGH
+    category: "Gaming · Riot"
+    regex: "RGAPI-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+
+  - id: VSS-GAME-005
+    name: "Agora App Certificate"
+    severity: HIGH
+    category: "Gaming · Agora"
+    regex: "(?i)agora[_\\-\\s]*(app[_\\-]*)?(certificate|secret)[\\s\\S]{0,20}['\"]([a-f0-9]{32})['\"]"
+
+  # ── Telecom / SMS / Voice avanzado ────────────────────────────────────────
+  - id: VSS-TEL-001
+    name: "Bandwidth API credentials"
+    severity: HIGH
+    category: "Telecom · Bandwidth"
+    regex: "(?i)bandwidth[_\\-\\s]*(api[_\\-]*)?(secret|token|password)[\\s\\S]{0,20}['\"]([A-Za-z0-9]{20,})['\"]"
+
+  - id: VSS-TEL-002
+    name: "Plivo Auth Token"
+    severity: HIGH
+    category: "Telecom · Plivo"
+    regex: "(?i)plivo[_\\-\\s]*(auth[_\\-]*)?(token|secret)[\\s\\S]{0,20}['\"]([a-zA-Z0-9]{40})['\"]"
+
+  - id: VSS-TEL-003
+    name: "Sinch API key/secret"
+    severity: HIGH
+    category: "Telecom · Sinch"
+    regex: "(?i)sinch[_\\-\\s]*(api[_\\-]*)?(key|secret)[\\s\\S]{0,20}['\"]([A-Za-z0-9+/=]{20,})['\"]"
+
+  # ── Mapas / Geolocalización ───────────────────────────────────────────────
+  - id: VSS-GEO-001
+    name: "Google Maps / Places API key"
+    severity: HIGH
+    category: "Geo · Google Maps"
+    regex: "AIza[0-9A-Za-z\\-_]{35}"
+
+  - id: VSS-GEO-002
+    name: "HERE Maps API key"
+    severity: HIGH
+    category: "Geo · HERE"
+    regex: "(?i)here[_\\-\\s]*(maps[_\\-]*)?(api[_\\-]*)?(key|token)[\\s\\S]{0,20}['\"]([A-Za-z0-9_\\-]{43})['\"]"
+
+  - id: VSS-GEO-003
+    name: "TomTom API key"
+    severity: MEDIUM
+    category: "Geo · TomTom"
+    regex: "(?i)tomtom[_\\-\\s]*(api[_\\-]*)?(key|token)[\\s\\S]{0,20}['\"]([a-zA-Z0-9]{32})['\"]"
+
+  # ── eCommerce / Marketplaces ──────────────────────────────────────────────
+  - id: VSS-ECOM-001
+    name: "WooCommerce Consumer Secret"
+    severity: HIGH
+    category: "eCommerce · WooCommerce"
+    regex: "cs_[a-f0-9]{40}"
+
+  - id: VSS-ECOM-002
+    name: "WooCommerce Consumer Key"
+    severity: HIGH
+    category: "eCommerce · WooCommerce"
+    regex: "ck_[a-f0-9]{40}"
+
+  - id: VSS-ECOM-003
+    name: "Magento access token"
+    severity: HIGH
+    category: "eCommerce · Magento"
+    regex: "(?i)magento[_\\-\\s]*(access[_\\-]*)?(token|key)[\\s\\S]{0,20}['\"]([a-z0-9]{32})['\"]"
+
+  - id: VSS-ECOM-004
+    name: "PrestaShop API key"
+    severity: HIGH
+    category: "eCommerce · PrestaShop"
+    regex: "(?i)prestashop[_\\-\\s]*(api[_\\-]*)?(key|token)[\\s\\S]{0,20}['\"]([A-Z0-9]{32})['\"]"
+
+  # ── Enterprise / Legacy ───────────────────────────────────────────────────
+  - id: VSS-ENT-001
+    name: "SAP service key / API key"
+    severity: HIGH
+    category: "Enterprise · SAP"
+    regex: "(?i)sap[_\\-\\s]*(service[_\\-]*)?(key|api[_\\-]*key|client[_\\-]*secret)[\\s\\S]{0,30}['\"]([A-Za-z0-9+/=]{20,})['\"]"
+
+  - id: VSS-ENT-002
+    name: "Salesforce refresh token"
+    severity: HIGH
+    category: "Enterprise · Salesforce"
+    regex: "(?i)salesforce[_\\-\\s]*(refresh[_\\-]*)?(token)[\\s\\S]{0,20}['\"]([A-Za-z0-9._!]{40,})['\"]"
+
+  - id: VSS-ENT-003
+    name: "ServiceNow credentials"
+    severity: HIGH
+    category: "Enterprise · ServiceNow"
+    regex: "(?i)servicenow[_\\-\\s]*(password|token|secret)[\\s\\S]{0,20}['\"]([^'\"\\s]{8,})['\"]"
+
+  - id: VSS-ENT-004
+    name: "Jira API token"
+    severity: HIGH
+    category: "Enterprise · Jira"
+    regex: "(?i)jira[_\\-\\s]*(api[_\\-]*)?(token|key)[\\s\\S]{0,20}['\"]([A-Za-z0-9]{24,})['\"]"
+
+  - id: VSS-ENT-005
+    name: "Confluence API token"
+    severity: HIGH
+    category: "Enterprise · Confluence"
+    regex: "(?i)confluence[_\\-\\s]*(api[_\\-]*)?(token|key)[\\s\\S]{0,20}['\"]([A-Za-z0-9]{24,})['\"]"
+
+  - id: VSS-ENT-006
+    name: "PagerDuty integration key (32 hex)"
+    severity: HIGH
+    category: "Enterprise · PagerDuty"
+    regex: "(?i)pagerduty[_\\-\\s]*(integration[_\\-]*)?(key|token)[\\s\\S]{0,20}['\"]([a-f0-9]{32})['\"]"
+
+  # ── Seguridad / Escáneres ─────────────────────────────────────────────────
+  - id: VSS-SEC-001
+    name: "Snyk API token"
+    severity: HIGH
+    category: "Security · Snyk"
+    regex: "(?i)snyk[_\\-\\s]*(api[_\\-]*)?(token|key)[\\s\\S]{0,20}['\"]([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})['\"]"
+
+  - id: VSS-SEC-002
+    name: "Veracode API ID/key"
+    severity: HIGH
+    category: "Security · Veracode"
+    regex: "(?i)veracode[_\\-\\s]*(api[_\\-]*)?(id|key|secret)[\\s\\S]{0,20}['\"]([a-zA-Z0-9]{32,})['\"]"
+
+  - id: VSS-SEC-003
+    name: "Checkmarx / SAST credentials"
+    severity: HIGH
+    category: "Security · Checkmarx"
+    regex: "(?i)(checkmarx|cx)[_\\-\\s]*(password|token|secret)[\\s\\S]{0,20}['\"]([^'\"\\s]{8,})['\"]"
+
+  # ── CDN / Media ───────────────────────────────────────────────────────────
+  - id: VSS-CDN-001
+    name: "Akamai EdgeGrid credentials"
+    severity: HIGH
+    category: "CDN · Akamai"
+    regex: "(?i)akamai[_\\-\\s]*(client[_\\-]*)?(secret|token)[\\s\\S]{0,20}['\"]([a-zA-Z0-9]{32,})['\"]"
+
+  - id: VSS-CDN-002
+    name: "Cloudinary upload preset / API secret"
+    severity: HIGH
+    category: "CDN · Cloudinary"
+    regex: "(?i)cloudinary[_\\-\\s]*(api[_\\-]*)?(secret)[\\s\\S]{0,20}['\"]([A-Za-z0-9_\\-]{27})['\"]"
+
+  - id: VSS-CDN-003
+    name: "BunnyCDN API key"
+    severity: HIGH
+    category: "CDN · BunnyCDN"
+    regex: "(?i)bunny(cdn)?[_\\-\\s]*(api[_\\-]*)?(key|token)[\\s\\S]{0,20}['\"]([a-f0-9\\-]{36,76})['\"]"
+
+  # ── Analytics / Marketing ─────────────────────────────────────────────────
+  - id: VSS-ANA-001
+    name: "Mixpanel project token/secret"
+    severity: MEDIUM
+    category: "Analytics · Mixpanel"
+    regex: "(?i)mixpanel[_\\-\\s]*(project[_\\-]*)?(token|secret)[\\s\\S]{0,20}['\"]([a-f0-9]{32})['\"]"
+
+  - id: VSS-ANA-002
+    name: "Amplitude API key/secret"
+    severity: MEDIUM
+    category: "Analytics · Amplitude"
+    regex: "(?i)amplitude[_\\-\\s]*(api[_\\-]*)?(key|secret)[\\s\\S]{0,20}['\"]([a-f0-9]{32})['\"]"
+
+  - id: VSS-ANA-003
+    name: "Segment write key"
+    severity: MEDIUM
+    category: "Analytics · Segment"
+    regex: "(?i)segment[_\\-\\s]*(write[_\\-]*)?(key|token)[\\s\\S]{0,20}['\"]([A-Za-z0-9]{20,})['\"]"
+
+  - id: VSS-ANA-004
+    name: "Hotjar site ID + API key"
+    severity: LOW
+    category: "Analytics · Hotjar"
+    regex: "(?i)hotjar[_\\-\\s]*(api[_\\-]*)?(key|token|secret)[\\s\\S]{0,20}['\"]([A-Za-z0-9]{20,})['\"]"
+
+  - id: VSS-ANA-005
+    name: "Braze (Appboy) API key"
+    severity: HIGH
+    category: "Analytics · Braze"
+    regex: "(?i)(braze|appboy)[_\\-\\s]*(api[_\\-]*)?(key|token)[\\s\\S]{0,20}['\"]([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})['\"]"
