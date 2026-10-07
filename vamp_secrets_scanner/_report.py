@@ -13,7 +13,7 @@ import re
 from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from rich.console import Console
 

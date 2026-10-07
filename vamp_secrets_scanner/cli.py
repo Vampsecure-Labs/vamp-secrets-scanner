@@ -20,7 +20,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from ._models import VERSION, TOOL_NAME, Severity, _SEVERITY_ORDER, Finding
+from ._models import VERSION, Severity, _SEVERITY_ORDER, Finding
 from ._core import (
     discover_files, scan_file, _is_git_repo, scan_git_history,
     scan_vault_misconfig, load_allowlist, apply_allowlist, generate_allowlist,
@@ -28,7 +28,7 @@ from ._core import (
     scan_docker_container, scan_all_docker_containers,
     scan_kubernetes_secrets,
     _install_pre_commit_hook, _export_semgrep_rules,
-    _run_verification, _run_scan, apply_delta_scan, _daemon_loop,
+    _run_verification, apply_delta_scan, _daemon_loop,
     EXCLUDE_DIRS,
 )
 from ._report import export_json, export_html, export_sarif, _findings_vsl

@@ -472,7 +472,6 @@ class TestDaemonMode:
 
     def test_daemon_loop_argparser_acepta_watch(self):
         """El parser acepta --watch como entero."""
-        import argparse
         from vamp_secrets_scanner import parse_args as _parse
         import sys
 
@@ -534,7 +533,6 @@ class TestDeltaScan:
     def test_argparser_acepta_delta(self):
         import sys
         from unittest.mock import patch
-        import argparse
         with patch.object(sys, "argv", ["vamp_secrets_scanner", ".", "--delta", "report.json"]):
             from vamp_secrets_scanner import parse_args
             args = parse_args()

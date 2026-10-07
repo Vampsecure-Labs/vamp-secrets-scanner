@@ -9,7 +9,6 @@ Sin main(), parse_args() ni funciones de display Rich.
 
 from __future__ import annotations
 
-import asyncio
 import base64
 import hashlib
 import json
@@ -856,8 +855,7 @@ def _install_pre_commit_hook(target: Path) -> None:
     hook_path = git_dir / "hooks" / "pre-commit"
     hook_path.parent.mkdir(parents=True, exist_ok=True)
 
-    tool_path = Path(__file__).resolve().parent / "cli.py"
-    hook_script = f"""#!/usr/bin/env bash
+    hook_script = """#!/usr/bin/env bash
 # Hook pre-commit instalado por vamp-secrets-scanner
 # © VampSecure Studios — VampSecure Labs Security Research Division
 set -euo pipefail
