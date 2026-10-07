@@ -1,0 +1,124 @@
+# © VampSecure Studios — VampSecure Labs Security Research Division
+# Reglas: APIs de Inteligencia Artificial y LLMs
+format: "1.0"
+source: "VampSecure Labs — curado desde gitleaks/TruffleHog + investigación propia"
+rules:
+  - id: VSS-AI-001
+    name: "OpenAI API Key (clásica)"
+    severity: CRITICAL
+    category: "IA · OpenAI"
+    regex: "sk-[a-zA-Z0-9]{20}T3BlbkFJ[a-zA-Z0-9]{20}"
+
+  - id: VSS-AI-002
+    name: "OpenAI API Key (nueva — sk-proj)"
+    severity: CRITICAL
+    category: "IA · OpenAI"
+    regex: "sk-proj-[A-Za-z0-9\\-_]{86,}"
+
+  - id: VSS-AI-003
+    name: "OpenAI Org/Service Account Key (sk-svcacct)"
+    severity: CRITICAL
+    category: "IA · OpenAI"
+    regex: "sk-svcacct-[A-Za-z0-9\\-_]{86,}"
+
+  - id: VSS-AI-004
+    name: "Anthropic API Key"
+    severity: CRITICAL
+    category: "IA · Anthropic"
+    regex: "sk-ant-api\\d{2}-[A-Za-z0-9\\-_]{95,}"
+
+  - id: VSS-AI-005
+    name: "HuggingFace User Access Token"
+    severity: HIGH
+    category: "IA · HuggingFace"
+    regex: "hf_[A-Za-z0-9]{34,}"
+
+  - id: VSS-AI-006
+    name: "HuggingFace API Token (contexto)"
+    severity: HIGH
+    category: "IA · HuggingFace"
+    regex: "(?i)huggingface.{0,20}['\"]([A-Za-z0-9\\-_]{40,})['\"]"
+
+  - id: VSS-AI-007
+    name: "Replicate API Token"
+    severity: HIGH
+    category: "IA · Replicate"
+    regex: "r8_[A-Za-z0-9]{40}"
+
+  - id: VSS-AI-008
+    name: "Cohere API Key"
+    severity: HIGH
+    category: "IA · Cohere"
+    regex: "(?i)cohere.{0,20}['\"]([A-Za-z0-9]{40})['\"]"
+
+  - id: VSS-AI-009
+    name: "Stability AI API Key"
+    severity: HIGH
+    category: "IA · StabilityAI"
+    regex: "sk-[A-Za-z0-9]{32,48}"
+
+  - id: VSS-AI-010
+    name: "AI21 Labs API Key"
+    severity: HIGH
+    category: "IA · AI21"
+    regex: "(?i)ai21.{0,20}['\"]([A-Za-z0-9]{32,})['\"]"
+
+  - id: VSS-AI-011
+    name: "Mistral AI API Key"
+    severity: HIGH
+    category: "IA · Mistral"
+    regex: "(?i)(?:MISTRAL_API_KEY|mistral.{0,10}api.?key)\\s*[:=]\\s*['\"]?([A-Za-z0-9]{32,})['\"]?"
+
+  - id: VSS-AI-012
+    name: "Together AI API Key"
+    severity: HIGH
+    category: "IA · Together"
+    regex: "(?i)(?:TOGETHER_API_KEY|together.{0,10}api.?key)\\s*[:=]\\s*['\"]?([A-Za-z0-9]{64,})['\"]?"
+
+  - id: VSS-AI-013
+    name: "Groq API Key"
+    severity: HIGH
+    category: "IA · Groq"
+    regex: "gsk_[A-Za-z0-9]{52}"
+
+  - id: VSS-AI-014
+    name: "Perplexity AI API Key"
+    severity: HIGH
+    category: "IA · Perplexity"
+    regex: "pplx-[A-Za-z0-9]{48}"
+
+  - id: VSS-AI-015
+    name: "ElevenLabs API Key"
+    severity: HIGH
+    category: "IA · ElevenLabs"
+    regex: "(?i)(?:ELEVEN_API_KEY|elevenlabs.{0,10}api.?key)\\s*[:=]\\s*['\"]?([A-Za-z0-9]{32})['\"]?"
+
+  - id: VSS-AI-016
+    name: "AssemblyAI API Key"
+    severity: HIGH
+    category: "IA · AssemblyAI"
+    regex: "(?i)assemblyai.{0,20}['\"]([a-z0-9]{32})['\"]"
+
+  - id: VSS-AI-017
+    name: "OpenRouter API Key"
+    severity: HIGH
+    category: "IA · OpenRouter"
+    regex: "sk-or-v1-[A-Za-z0-9]{64}"
+
+  - id: VSS-AI-018
+    name: "Pinecone API Key"
+    severity: HIGH
+    category: "IA · Pinecone (vectorDB)"
+    regex: "(?i)pinecone.{0,20}['\"]([A-Za-z0-9\\-]{36,})['\"]"
+
+  - id: VSS-AI-019
+    name: "Weaviate API Key"
+    severity: MEDIUM
+    category: "IA · Weaviate (vectorDB)"
+    regex: "(?i)(?:WEAVIATE_API_KEY|weaviate.{0,10}api.?key)\\s*[:=]\\s*['\"]?([A-Za-z0-9]{32,})['\"]?"
+
+  - id: VSS-AI-020
+    name: "Langchain API Key (LangSmith)"
+    severity: MEDIUM
+    category: "IA · LangChain"
+    regex: "ls__[A-Za-z0-9]{32,}"

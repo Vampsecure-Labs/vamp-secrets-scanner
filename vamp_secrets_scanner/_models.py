@@ -18,7 +18,7 @@ from typing import Dict, List, Optional, Set
 # Versión y nombre de herramienta
 # ─────────────────────────────────────────────────────────────────────────────
 
-VERSION   = "2.7.0"
+VERSION   = "3.0.0"
 TOOL_NAME = "vamp-secrets-scanner"
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -1,0 +1,151 @@
+# © VampSecure Studios — VampSecure Labs Security Research Division
+# Reglas: CI/CD, DevOps, PaaS y herramientas de despliegue
+format: "1.0"
+source: "VampSecure Labs — curado desde gitleaks/TruffleHog + investigación propia"
+rules:
+  # ── CircleCI ────────────────────────────────────────────────────────────────
+  - id: VSS-CCI-001
+    name: "CircleCI Personal API Token"
+    severity: HIGH
+    category: "CI/CD · CircleCI"
+    regex: "(?i)circle.?token\\s*[:=]\\s*['\"]?([0-9a-f]{40})['\"]?"
+
+  - id: VSS-CCI-002
+    name: "CircleCI API Token (contexto)"
+    severity: HIGH
+    category: "CI/CD · CircleCI"
+    regex: "(?i)CIRCLE_TOKEN\\s*[:=]\\s*['\"]?([0-9a-f]{40})['\"]?"
+
+  # ── Travis CI ───────────────────────────────────────────────────────────────
+  - id: VSS-TRA-001
+    name: "Travis CI API Token"
+    severity: HIGH
+    category: "CI/CD · Travis CI"
+    regex: "(?i)travis.{0,20}(api.?token|api.?key)\\s*[:=]\\s*['\"]?([A-Za-z0-9\\-_]{20,})['\"]?"
+
+  # ── Jenkins ─────────────────────────────────────────────────────────────────
+  - id: VSS-JEN-001
+    name: "Jenkins API Token (contexto)"
+    severity: HIGH
+    category: "CI/CD · Jenkins"
+    regex: "(?i)jenkins.{0,20}api.?token\\s*[:=]\\s*['\"]?([a-f0-9]{32,})['\"]?"
+
+  - id: VSS-JEN-002
+    name: "Jenkins Crumb"
+    severity: MEDIUM
+    category: "CI/CD · Jenkins"
+    regex: "Jenkins-Crumb:[A-Za-z0-9]{32,}"
+
+  # ── Heroku ──────────────────────────────────────────────────────────────────
+  - id: VSS-HER-001
+    name: "Heroku API Key"
+    severity: HIGH
+    category: "CI/CD · Heroku"
+    regex: "(?i)heroku.{0,20}api.?key\\s*[:=]\\s*['\"]?([0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12})['\"]?"
+
+  - id: VSS-HER-002
+    name: "Heroku Auth Token"
+    severity: HIGH
+    category: "CI/CD · Heroku"
+    regex: "(?i)HEROKU_API_KEY\\s*[:=]\\s*['\"]?([0-9a-f\\-]{36})['\"]?"
+
+  # ── Netlify ──────────────────────────────────────────────────────────────────
+  - id: VSS-NET-001
+    name: "Netlify Personal Access Token"
+    severity: HIGH
+    category: "CI/CD · Netlify"
+    regex: "(?i)netlify.{0,20}(token|api.?key)\\s*[:=]\\s*['\"]?([A-Za-z0-9\\-_]{40,})['\"]?"
+
+  - id: VSS-NET-002
+    name: "Netlify Deploy Hook"
+    severity: MEDIUM
+    category: "CI/CD · Netlify"
+    regex: "https://api\\.netlify\\.com/build_hooks/[a-z0-9]{24}"
+
+  # ── Vercel ───────────────────────────────────────────────────────────────────
+  - id: VSS-VER-001
+    name: "Vercel API Token"
+    severity: HIGH
+    category: "CI/CD · Vercel"
+    regex: "(?i)vercel.{0,20}(token|api.?key)\\s*[:=]\\s*['\"]?([A-Za-z0-9]{24})['\"]?"
+
+  - id: VSS-VER-002
+    name: "Vercel Access Token (VERCEL_TOKEN)"
+    severity: HIGH
+    category: "CI/CD · Vercel"
+    regex: "(?i)VERCEL_TOKEN\\s*[:=]\\s*['\"]?([A-Za-z0-9]{24})['\"]?"
+
+  # ── Render ───────────────────────────────────────────────────────────────────
+  - id: VSS-REN-001
+    name: "Render Deploy Hook"
+    severity: MEDIUM
+    category: "CI/CD · Render"
+    regex: "https://api\\.render\\.com/deploy/srv-[A-Za-z0-9]+\\?key=[A-Za-z0-9]+"
+
+  # ── Railway ──────────────────────────────────────────────────────────────────
+  - id: VSS-RAI-001
+    name: "Railway API Token"
+    severity: HIGH
+    category: "CI/CD · Railway"
+    regex: "(?i)RAILWAY_TOKEN\\s*[:=]\\s*['\"]?([A-Za-z0-9\\-]{32,})['\"]?"
+
+  # ── Fly.io tokens ─────────────────────────────────────────────────────────────
+  - id: VSS-FLY-002
+    name: "Fly.io Deploy Token"
+    severity: HIGH
+    category: "CI/CD · Fly.io"
+    regex: "FlyV1 [A-Za-z0-9+/=]{100,}"
+
+  # ── Docker Hub ───────────────────────────────────────────────────────────────
+  - id: VSS-DHB-001
+    name: "Docker Hub Access Token"
+    severity: HIGH
+    category: "CI/CD · Docker Hub"
+    regex: "dckr_pat_[A-Za-z0-9\\-_]{27}"
+
+  # ── AWS CodeArtifact ─────────────────────────────────────────────────────────
+  - id: VSS-AWC-001
+    name: "AWS CodeArtifact Token"
+    severity: HIGH
+    category: "CI/CD · AWS CodeArtifact"
+    regex: "(?i)codeartifact.{0,20}token\\s*[:=]\\s*['\"]?([A-Za-z0-9+/=]{100,})['\"]?"
+
+  # ── Sonatype Nexus ───────────────────────────────────────────────────────────
+  - id: VSS-NEX-001
+    name: "Nexus Repository Manager Token"
+    severity: HIGH
+    category: "CI/CD · Nexus"
+    regex: "(?i)nexus.{0,20}(token|password)\\s*[:=]\\s*['\"]?([A-Za-z0-9+/=]{20,})['\"]?"
+
+  # ── JFrog Artifactory ────────────────────────────────────────────────────────
+  - id: VSS-JFG-001
+    name: "JFrog Artifactory API Key"
+    severity: HIGH
+    category: "CI/CD · JFrog Artifactory"
+    regex: "(?i)artifactory.{0,20}api.?key\\s*[:=]\\s*['\"]?([A-Za-z0-9]{40,})['\"]?"
+
+  - id: VSS-JFG-002
+    name: "JFrog Identity Token"
+    severity: HIGH
+    category: "CI/CD · JFrog"
+    regex: "(?i)JFROG_TOKEN\\s*[:=]\\s*['\"]?([A-Za-z0-9.\\-_]{40,})['\"]?"
+
+  # ── SonarQube / SonarCloud ───────────────────────────────────────────────────
+  - id: VSS-SON-001
+    name: "SonarQube / SonarCloud Token"
+    severity: HIGH
+    category: "CI/CD · SonarQube"
+    regex: "(?i)sonar.?(?:login|token)\\s*[:=]\\s*['\"]?([a-f0-9]{40})['\"]?"
+
+  # ── Terraform Cloud ──────────────────────────────────────────────────────────
+  - id: VSS-TFC-001
+    name: "Terraform Cloud API Token"
+    severity: CRITICAL
+    category: "CI/CD · Terraform Cloud"
+    regex: "(?i)TFC_TOKEN\\s*[:=]\\s*['\"]?([A-Za-z0-9.]{14,}\\.[A-Za-z0-9.]{10,})['\"]?"
+
+  - id: VSS-TFC-002
+    name: "Terraform Cloud Token (atlas.v1)"
+    severity: CRITICAL
+    category: "CI/CD · Terraform Cloud"
+    regex: "['\"]?atlas\\.v1\\.[a-zA-Z0-9]{16,}['\"]?"

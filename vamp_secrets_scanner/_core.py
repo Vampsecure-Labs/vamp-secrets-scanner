@@ -33,6 +33,52 @@ from ._models import (
 _console = Console()
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Motor de reglas YAML — carga patrones adicionales desde rules/*.yaml
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _load_yaml_rules() -> list:
+    """
+    Carga reglas de detección adicionales desde el directorio rules/ del paquete.
+    Requiere pyyaml (ya incluido en las dependencias).
+    Falla silenciosamente si yaml no está disponible o un fichero es inválido.
+    """
+    try:
+        import yaml  # noqa: F401 — comprobamos disponibilidad
+    except ImportError:
+        return []
+    import yaml as _yaml
+    rules_dir = Path(__file__).parent / "rules"
+    if not rules_dir.exists():
+        return []
+    loaded: list = []
+    for yf in sorted(rules_dir.glob("*.yaml")):
+        try:
+            data = _yaml.safe_load(yf.read_text(encoding="utf-8")) or {}
+            for r in data.get("rules", []):
+                if not r.get("regex") or not r.get("name"):
+                    continue
+                try:
+                    loaded.append({
+                        "name":     r["name"],
+                        "severity": r.get("severity", "MEDIUM"),
+                        "category": r.get("category", "Externo"),
+                        "regex":    r["regex"],
+                        "compiled": re.compile(r["regex"], re.MULTILINE),
+                    })
+                except re.error:
+                    pass
+        except Exception:
+            pass
+    return loaded
+
+
+_YAML_PATTERNS: list = _load_yaml_rules()
+ALL_PATTERNS: list = SECRET_PATTERNS + _YAML_PATTERNS
+_ALL_RAW: list = _RAW_PATTERNS + [
+    {k: v for k, v in p.items() if k != "compiled"} for p in _YAML_PATTERNS
+]
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Fase 1 — Descubrimiento de ficheros
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -118,7 +164,7 @@ def scan_file(path: Path, entropy_threshold: float) -> List[Finding]:
     findings: List[Finding] = []
     seen_fps: Set[str] = set()
 
-    for pat in SECRET_PATTERNS:
+    for pat in ALL_PATTERNS:
         for m in pat["compiled"].finditer(text):
             value   = m.group(0)
             fp      = _fingerprint(value, pat["name"])
@@ -254,7 +300,7 @@ def scan_git_history(
             line_content = m_added.group(1)
             current_line += 1
 
-            for pat in SECRET_PATTERNS:
+            for pat in ALL_PATTERNS:
                 for m in pat["compiled"].finditer(line_content):
                     value = m.group(0)
                     fp = _fingerprint(value, f"git:{pat['name']}")
@@ -653,7 +699,7 @@ def scan_docker_container(container_id: str) -> List[Finding]:
     for linea in envs:
         if not linea.strip() or "=" not in linea:
             continue
-        for pat in SECRET_PATTERNS:
+        for pat in ALL_PATTERNS:
             match = pat["compiled"].search(linea)
             if not match:
                 continue
@@ -720,7 +766,7 @@ def scan_all_docker_containers() -> List[Finding]:
 def _scan_string_for_secrets(texto: str) -> List[Dict]:
     """Aplica todos los SECRET_PATTERNS a una cadena y devuelve coincidencias brutas."""
     coincidencias: List[Dict] = []
-    for pat in SECRET_PATTERNS:
+    for pat in ALL_PATTERNS:
         match = pat["compiled"].search(texto)
         if match:
             coincidencias.append({
@@ -898,7 +944,7 @@ def _extract_raw_value(finding: Finding) -> Optional[str]:
         if not path.is_file():
             return None
         text = path.read_text(encoding="utf-8", errors="replace")
-        for pat in SECRET_PATTERNS:
+        for pat in ALL_PATTERNS:
             if pat["name"] == finding.pattern:
                 for match in pat["compiled"].finditer(text):
                     line_no = text[: match.start()].count("\n") + 1
@@ -1168,7 +1214,7 @@ def _export_semgrep_rules(output_file: str) -> None:
         "rules:",
     ]
 
-    for pat in _RAW_PATTERNS:
+    for pat in _ALL_RAW:
         rule_id   = f"vampsec-{_slug(pat['name'])}"
         sev       = SEV_MAP.get(pat["severity"], "WARNING")
         regex     = pat["regex"]
@@ -1195,7 +1241,7 @@ def _export_semgrep_rules(output_file: str) -> None:
         ]
 
     Path(output_file).write_text("\n".join(lines), encoding="utf-8")
-    _console.print(f"[bold green]  ✔ {len(_RAW_PATTERNS)} reglas Semgrep exportadas → {output_file}[/]")
+    _console.print(f"[bold green]  ✔ {len(_ALL_RAW)} reglas Semgrep exportadas → {output_file}[/]")
     _console.print(f"[dim]  Ejecutar: semgrep --config {output_file} <directorio>[/]")
 
 

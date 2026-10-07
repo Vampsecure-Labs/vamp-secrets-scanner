@@ -1,0 +1,168 @@
+# © VampSecure Studios — VampSecure Labs Security Research Division
+# Reglas: VCS adicionales, bases de datos extra, infraestructura y PKI
+format: "1.0"
+source: "VampSecure Labs — curado desde gitleaks/TruffleHog + investigación propia"
+rules:
+  # ── Bitbucket ────────────────────────────────────────────────────────────────
+  - id: VSS-BB-001
+    name: "Bitbucket HTTP Access Token"
+    severity: HIGH
+    category: "VCS · Bitbucket"
+    regex: "ATBB[A-Za-z0-9]{32}"
+
+  - id: VSS-BB-002
+    name: "Bitbucket App Password (contexto)"
+    severity: HIGH
+    category: "VCS · Bitbucket"
+    regex: "(?i)bitbucket.{0,20}(app.?password|token)\\s*[:=]\\s*['\"]?([A-Za-z0-9\\-_]{20,})['\"]?"
+
+  # ── Azure DevOps ─────────────────────────────────────────────────────────────
+  - id: VSS-ADO-001
+    name: "Azure DevOps Personal Access Token"
+    severity: CRITICAL
+    category: "VCS · Azure DevOps"
+    regex: "(?i)azure.?devops.{0,20}(?:pat|token)\\s*[:=]\\s*['\"]?([A-Za-z0-9+/=]{52})['\"]?"
+
+  - id: VSS-ADO-002
+    name: "Azure DevOps PAT (variable AZ_DEVOPS)"
+    severity: CRITICAL
+    category: "VCS · Azure DevOps"
+    regex: "(?i)(?:AZ_DEVOPS|AZURE_DEVOPS)_(?:PAT|TOKEN)\\s*[:=]\\s*['\"]?([A-Za-z0-9+/=]{52})['\"]?"
+
+  # ── Gitea / Forgejo ───────────────────────────────────────────────────────────
+  - id: VSS-GIT-001
+    name: "Gitea/Forgejo Personal Access Token"
+    severity: HIGH
+    category: "VCS · Gitea/Forgejo"
+    regex: "(?:gts|gtk|forgejo)[A-Za-z0-9]{40}"
+
+  # ── SourceHut ────────────────────────────────────────────────────────────────
+  - id: VSS-SHT-001
+    name: "SourceHut OAuth Token"
+    severity: HIGH
+    category: "VCS · SourceHut"
+    regex: "(?i)sourcehut.{0,20}token\\s*[:=]\\s*['\"]?([A-Za-z0-9+/=]{40,})['\"]?"
+
+  # ── Bases de datos extra ──────────────────────────────────────────────────────
+  - id: VSS-ES-001
+    name: "Elasticsearch API Key (header)"
+    severity: HIGH
+    category: "Base de datos · Elasticsearch"
+    regex: "ApiKey [A-Za-z0-9+/=]{30,}"
+
+  - id: VSS-ES-002
+    name: "Elasticsearch HTTP URL con credenciales"
+    severity: CRITICAL
+    category: "Base de datos · Elasticsearch"
+    regex: "https?://[^:]+:[^@]{3,}@(?:[a-zA-Z0-9\\-]+\\.)?(?:es\\.amazonaws|elastic\\.co|bonsaisearch\\.net)[^\\s\"']+"
+
+  - id: VSS-INF-001
+    name: "InfluxDB Token"
+    severity: HIGH
+    category: "Base de datos · InfluxDB"
+    regex: "(?i)influx.{0,20}(?:token|api.?key)\\s*[:=]\\s*['\"]?([A-Za-z0-9+/=_\\-]{64,})['\"]?"
+
+  - id: VSS-CDB-001
+    name: "CouchDB HTTP URL con credenciales"
+    severity: CRITICAL
+    category: "Base de datos · CouchDB"
+    regex: "https?://[^:]+:[^@]{3,}@[^\\s\"']+:5984[^\\s\"']*"
+
+  - id: VSS-CAS-001
+    name: "Cassandra/ScyllaDB DSN con contraseña (contexto)"
+    severity: CRITICAL
+    category: "Base de datos · Cassandra"
+    regex: "(?i)cassandra.{0,20}password\\s*[:=]\\s*['\"]([^'\"]{6,})['\"]"
+
+  - id: VSS-NEO-001
+    name: "Neo4j Bolt URI con credenciales"
+    severity: CRITICAL
+    category: "Base de datos · Neo4j"
+    regex: "bolt://[^:]+:[^@]{3,}@[^\\s\"']+"
+
+  - id: VSS-PLA-001
+    name: "PlanetScale API Token"
+    severity: HIGH
+    category: "Base de datos · PlanetScale"
+    regex: "pscale_tkn_[A-Za-z0-9_]{43}"
+
+  - id: VSS-TUR-001
+    name: "Turso Database Auth Token"
+    severity: HIGH
+    category: "Base de datos · Turso"
+    regex: "(?i)TURSO_(?:DB_AUTH_)?TOKEN\\s*[:=]\\s*['\"]?([A-Za-z0-9.\\-_]{100,})['\"]?"
+
+  - id: VSS-NPY-001
+    name: "Neon (Postgres serverless) Connection String"
+    severity: CRITICAL
+    category: "Base de datos · Neon"
+    regex: "postgres://[^:]+:[^@]{3,}@[a-z0-9\\-]+\\.neon\\.tech/[^\\s\"']+"
+
+  # ── Infraestructura ──────────────────────────────────────────────────────────
+  - id: VSS-ANS-001
+    name: "Ansible Vault Password File (contexto)"
+    severity: CRITICAL
+    category: "Infraestructura · Ansible"
+    regex: "(?i)ansible.?vault.{0,20}password\\s*[:=]\\s*['\"]([^'\"]{6,})['\"]"
+
+  - id: VSS-PUP-001
+    name: "Puppet Node Manager Token"
+    severity: HIGH
+    category: "Infraestructura · Puppet"
+    regex: "(?i)puppet.{0,20}(?:token|api.?key)\\s*[:=]\\s*['\"]?([A-Za-z0-9\\-_]{40,})['\"]?"
+
+  - id: VSS-CHF-001
+    name: "HashiCorp Consul Token"
+    severity: CRITICAL
+    category: "Infraestructura · Consul"
+    regex: "(?i)(?:CONSUL_HTTP_TOKEN|consul.{0,10}token)\\s*[:=]\\s*['\"]?([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})['\"]?"
+
+  - id: VSS-NOM-001
+    name: "HashiCorp Nomad ACL Token"
+    severity: CRITICAL
+    category: "Infraestructura · Nomad"
+    regex: "(?i)(?:NOMAD_TOKEN|nomad.{0,10}token)\\s*[:=]\\s*['\"]?([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})['\"]?"
+
+  # ── PKI / Certificados extra ──────────────────────────────────────────────────
+  - id: VSS-PKI-001
+    name: "DSA Private Key (PEM)"
+    severity: CRITICAL
+    category: "Infraestructura · PKI"
+    regex: "-----BEGIN\\s+DSA\\s+PRIVATE\\s+KEY-----"
+
+  - id: VSS-PKI-002
+    name: "PKCS12 / P12 en base64 (contexto)"
+    severity: CRITICAL
+    category: "Infraestructura · PKI"
+    regex: "(?i)(?:PKCS12|P12_KEY)\\s*[:=]\\s*['\"]?([A-Za-z0-9+/=]{60,})['\"]?"
+
+  - id: VSS-PKI-003
+    name: "SSH Ed25519 Private Key"
+    severity: CRITICAL
+    category: "Infraestructura · PKI"
+    regex: "-----BEGIN\\s+OPENSSH\\s+PRIVATE\\s+KEY-----[\\s\\S]{20,}-----END\\s+OPENSSH\\s+PRIVATE\\s+KEY-----"
+
+  - id: VSS-PKI-004
+    name: "Certificate Signing Request (CSR) con clave"
+    severity: HIGH
+    category: "Infraestructura · PKI"
+    regex: "-----BEGIN\\s+CERTIFICATE\\s+REQUEST-----"
+
+  # ── Kubernetes secrets ────────────────────────────────────────────────────────
+  - id: VSS-K8S-001
+    name: "Kubeconfig con credenciales hardcodeadas"
+    severity: CRITICAL
+    category: "Infraestructura · Kubernetes"
+    regex: "client-certificate-data:\\s+[A-Za-z0-9+/=]{50,}"
+
+  - id: VSS-K8S-002
+    name: "Kubernetes Service Account Token"
+    severity: CRITICAL
+    category: "Infraestructura · Kubernetes"
+    regex: "(?i)kubernetes.{0,20}service.?account.?token\\s*[:=]\\s*['\"]?(eyJ[A-Za-z0-9\\-_.]{50,})['\"]?"
+
+  - id: VSS-K8S-003
+    name: "Kubeconfig server token (cliente)"
+    severity: CRITICAL
+    category: "Infraestructura · Kubernetes"
+    regex: "token:\\s+[A-Za-z0-9\\-_.]{100,}"

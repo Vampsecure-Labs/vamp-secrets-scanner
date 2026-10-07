@@ -1,0 +1,150 @@
+# © VampSecure Studios — VampSecure Labs Security Research Division
+# Reglas: Proveedores Cloud adicionales (DigitalOcean, Alibaba, Oracle, IBM, Cloudflare…)
+format: "1.0"
+source: "VampSecure Labs — curado desde gitleaks/TruffleHog + investigación propia"
+rules:
+  # ── DigitalOcean ────────────────────────────────────────────────────────────
+  - id: VSS-DO-001
+    name: "DigitalOcean Personal Access Token"
+    severity: CRITICAL
+    category: "Cloud · DigitalOcean"
+    regex: "dop_v1_[a-f0-9]{64}"
+
+  - id: VSS-DO-002
+    name: "DigitalOcean OAuth Token"
+    severity: CRITICAL
+    category: "Cloud · DigitalOcean"
+    regex: "doo_v1_[a-f0-9]{64}"
+
+  - id: VSS-DO-003
+    name: "DigitalOcean Spaces Key"
+    severity: HIGH
+    category: "Cloud · DigitalOcean"
+    regex: "(?i)digitalocean.{0,30}spaces.{0,20}['\"]([A-Za-z0-9]{20})['\"]"
+
+  # ── Alibaba Cloud ───────────────────────────────────────────────────────────
+  - id: VSS-ALI-001
+    name: "Alibaba Cloud Access Key ID"
+    severity: CRITICAL
+    category: "Cloud · Alibaba"
+    regex: "LTAI[a-zA-Z0-9]{20,}"
+
+  - id: VSS-ALI-002
+    name: "Alibaba Cloud Access Key Secret (contexto)"
+    severity: CRITICAL
+    category: "Cloud · Alibaba"
+    regex: "(?i)alibaba.{0,20}(access.?key.?secret|secret.?access.?key)\\s*[:=]\\s*['\"]?([A-Za-z0-9]{30,})['\"]?"
+
+  # ── Oracle Cloud ────────────────────────────────────────────────────────────
+  - id: VSS-OCI-001
+    name: "Oracle Cloud OCID"
+    severity: HIGH
+    category: "Cloud · Oracle OCI"
+    regex: "ocid1\\.[a-z]{1,20}\\.[a-z]{1,10}\\.[a-z0-9]{1,12}\\.[a-z0-9]{60}"
+
+  - id: VSS-OCI-002
+    name: "Oracle Cloud API Key (contexto)"
+    severity: CRITICAL
+    category: "Cloud · Oracle OCI"
+    regex: "(?i)oci.{0,20}(api.?key|private.?key)\\s*[:=]\\s*['\"]?([A-Za-z0-9+/=]{60,})['\"]?"
+
+  # ── IBM Cloud ───────────────────────────────────────────────────────────────
+  - id: VSS-IBM-001
+    name: "IBM Cloud API Key"
+    severity: CRITICAL
+    category: "Cloud · IBM"
+    regex: "(?i)IBM.{0,20}api.?key\\s*[:=]\\s*['\"]?([A-Za-z0-9\\-_]{44})['\"]?"
+
+  - id: VSS-IBM-002
+    name: "IBM Cloud IAM Token"
+    severity: HIGH
+    category: "Cloud · IBM"
+    regex: "(?i)ibm.{0,20}iam.{0,20}token\\s*[:=]\\s*['\"]?([A-Za-z0-9\\-_.]{40,})['\"]?"
+
+  # ── Cloudflare ──────────────────────────────────────────────────────────────
+  - id: VSS-CF-001
+    name: "Cloudflare API Key (Global)"
+    severity: CRITICAL
+    category: "Cloud · Cloudflare"
+    regex: "(?i)cloudflare.{0,20}api.?key\\s*[:=]\\s*['\"]?([0-9a-f]{37})['\"]?"
+
+  - id: VSS-CF-002
+    name: "Cloudflare API Token"
+    severity: CRITICAL
+    category: "Cloud · Cloudflare"
+    regex: "(?i)cloudflare.{0,20}api.?token\\s*[:=]\\s*['\"]?([0-9A-Za-z\\-_]{40})['\"]?"
+
+  - id: VSS-CF-003
+    name: "Cloudflare Workers API Token"
+    severity: HIGH
+    category: "Cloud · Cloudflare"
+    regex: "(?i)CLOUDFLARE_API_TOKEN\\s*[:=]\\s*['\"]?([A-Za-z0-9\\-_]{40})['\"]?"
+
+  # ── Linode / Akamai Cloud ───────────────────────────────────────────────────
+  - id: VSS-LIN-001
+    name: "Linode Personal Access Token"
+    severity: CRITICAL
+    category: "Cloud · Linode"
+    regex: "(?i)linode.{0,20}token\\s*[:=]\\s*['\"]?([a-f0-9]{64})['\"]?"
+
+  # ── Vultr ───────────────────────────────────────────────────────────────────
+  - id: VSS-VLT-001
+    name: "Vultr API Key"
+    severity: CRITICAL
+    category: "Cloud · Vultr"
+    regex: "(?i)vultr.{0,20}api.?key\\s*[:=]\\s*['\"]?([A-Z0-9]{36})['\"]?"
+
+  # ── Hetzner ─────────────────────────────────────────────────────────────────
+  - id: VSS-HET-001
+    name: "Hetzner Cloud API Token"
+    severity: CRITICAL
+    category: "Cloud · Hetzner"
+    regex: "(?i)hetzner.{0,20}api.?token\\s*[:=]\\s*['\"]?([a-zA-Z0-9]{64})['\"]?"
+
+  # ── Scaleway ────────────────────────────────────────────────────────────────
+  - id: VSS-SCW-001
+    name: "Scaleway Secret Key"
+    severity: CRITICAL
+    category: "Cloud · Scaleway"
+    regex: "(?i)scaleway.{0,20}secret.?key\\s*[:=]\\s*['\"]?([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})['\"]?"
+
+  # ── Fastly ──────────────────────────────────────────────────────────────────
+  - id: VSS-FAS-001
+    name: "Fastly API Token"
+    severity: HIGH
+    category: "Cloud · Fastly"
+    regex: "(?i)fastly.{0,20}api.?token\\s*[:=]\\s*['\"]?([A-Za-z0-9\\-_]{32})['\"]?"
+
+  # ── Cloudinary ──────────────────────────────────────────────────────────────
+  - id: VSS-CLO-001
+    name: "Cloudinary API Secret"
+    severity: HIGH
+    category: "Cloud · Cloudinary"
+    regex: "cloudinary://[A-Za-z0-9]+:[A-Za-z0-9\\-_]+@[A-Za-z0-9]+"
+
+  # ── Supabase ────────────────────────────────────────────────────────────────
+  - id: VSS-SUP-001
+    name: "Supabase Service Key"
+    severity: CRITICAL
+    category: "Cloud · Supabase"
+    regex: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\\.[A-Za-z0-9\\-_]+\\..*role.*service_role"
+
+  - id: VSS-SUP-002
+    name: "Supabase Anon Key (contexto)"
+    severity: MEDIUM
+    category: "Cloud · Supabase"
+    regex: "(?i)supabase.{0,20}(anon|service).?key\\s*[:=]\\s*['\"]?([A-Za-z0-9\\-_.]{100,})['\"]?"
+
+  # ── Firebase / Firestore ─────────────────────────────────────────────────────
+  - id: VSS-FIR-001
+    name: "Firebase Admin SDK Credential"
+    severity: CRITICAL
+    category: "Cloud · Firebase"
+    regex: "(?i)firebase.{0,20}admin.{0,20}(credential|service.account)\\s*[:=]\\s*['\"]?([A-Za-z0-9\\-_.]{40,})['\"]?"
+
+  # ── Fly.io ──────────────────────────────────────────────────────────────────
+  - id: VSS-FLY-001
+    name: "Fly.io API Token"
+    severity: HIGH
+    category: "Cloud · Fly.io"
+    regex: "(?i)FLY_API_TOKEN\\s*[:=]\\s*['\"]?([A-Za-z0-9\\-_]{40,})['\"]?"

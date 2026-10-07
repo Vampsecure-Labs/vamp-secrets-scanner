@@ -1,0 +1,170 @@
+# © VampSecure Studios — VampSecure Labs Security Research Division
+# Reglas: SaaS, observabilidad y plataformas de negocio
+format: "1.0"
+source: "VampSecure Labs — curado desde gitleaks/TruffleHog + investigación propia"
+rules:
+  # ── Datadog ─────────────────────────────────────────────────────────────────
+  - id: VSS-DD-001
+    name: "Datadog API Key"
+    severity: HIGH
+    category: "Observabilidad · Datadog"
+    regex: "(?i)datadog.{0,20}api.?key\\s*[:=]\\s*['\"]?([a-f0-9]{32})['\"]?"
+
+  - id: VSS-DD-002
+    name: "Datadog App Key"
+    severity: HIGH
+    category: "Observabilidad · Datadog"
+    regex: "(?i)datadog.{0,20}app.?key\\s*[:=]\\s*['\"]?([a-f0-9]{40})['\"]?"
+
+  - id: VSS-DD-003
+    name: "DD_API_KEY variable de entorno"
+    severity: HIGH
+    category: "Observabilidad · Datadog"
+    regex: "DD_API_KEY\\s*[:=]\\s*['\"]?([a-f0-9]{32})['\"]?"
+
+  # ── New Relic ────────────────────────────────────────────────────────────────
+  - id: VSS-NR-001
+    name: "New Relic User API Key"
+    severity: HIGH
+    category: "Observabilidad · New Relic"
+    regex: "NRAK-[A-Z0-9]{27}"
+
+  - id: VSS-NR-002
+    name: "New Relic Insights API Key"
+    severity: HIGH
+    category: "Observabilidad · New Relic"
+    regex: "NRII-[A-Za-z0-9\\-_]{32,}"
+
+  - id: VSS-NR-003
+    name: "New Relic License Key"
+    severity: HIGH
+    category: "Observabilidad · New Relic"
+    regex: "(?i)new.?relic.{0,20}license.?key\\s*[:=]\\s*['\"]?([A-Za-z0-9]{40})['\"]?"
+
+  # ── Splunk ───────────────────────────────────────────────────────────────────
+  - id: VSS-SPL-001
+    name: "Splunk HTTP Event Collector (HEC) Token"
+    severity: HIGH
+    category: "Observabilidad · Splunk"
+    regex: "(?i)splunk.{0,20}(?:hec.?token|token)\\s*[:=]\\s*['\"]?([A-Za-z0-9\\-]{36})['\"]?"
+
+  # ── Elastic / Kibana ─────────────────────────────────────────────────────────
+  - id: VSS-ELS-001
+    name: "Elastic Cloud API Key"
+    severity: HIGH
+    category: "Observabilidad · Elastic"
+    regex: "(?i)elastic.{0,20}api.?key\\s*[:=]\\s*['\"]?([A-Za-z0-9+/=]{40,})['\"]?"
+
+  - id: VSS-ELS-002
+    name: "Elastic APM Secret Token"
+    severity: HIGH
+    category: "Observabilidad · Elastic"
+    regex: "(?i)ELASTIC_APM_SECRET_TOKEN\\s*[:=]\\s*['\"]?([A-Za-z0-9]{32,})['\"]?"
+
+  # ── PagerDuty ────────────────────────────────────────────────────────────────
+  - id: VSS-PGD-001
+    name: "PagerDuty API Key"
+    severity: HIGH
+    category: "SaaS · PagerDuty"
+    regex: "(?i)pagerduty.{0,20}api.?key\\s*[:=]\\s*['\"]?([A-Za-z0-9+\\-_]{20})['\"]?"
+
+  # ── Grafana ──────────────────────────────────────────────────────────────────
+  - id: VSS-GRF-001
+    name: "Grafana Service Account Token"
+    severity: HIGH
+    category: "Observabilidad · Grafana"
+    regex: "glsa_[A-Za-z0-9]{32}_[a-f0-9]{8}"
+
+  - id: VSS-GRF-002
+    name: "Grafana Cloud API Key"
+    severity: HIGH
+    category: "Observabilidad · Grafana"
+    regex: "(?i)grafana.{0,20}api.?key\\s*[:=]\\s*['\"]?([A-Za-z0-9+/=]{60,})['\"]?"
+
+  # ── Sentry ───────────────────────────────────────────────────────────────────
+  - id: VSS-SEN-001
+    name: "Sentry Auth Token"
+    severity: HIGH
+    category: "Observabilidad · Sentry"
+    regex: "(?i)sentry.{0,20}auth.?token\\s*[:=]\\s*['\"]?([a-f0-9]{64})['\"]?"
+
+  - id: VSS-SEN-002
+    name: "Sentry DSN"
+    severity: MEDIUM
+    category: "Observabilidad · Sentry"
+    regex: "https://[a-f0-9]{32}@(?:o[0-9]+\\.)?ingest\\.sentry\\.io/[0-9]+"
+
+  # ── Salesforce ───────────────────────────────────────────────────────────────
+  - id: VSS-SFD-001
+    name: "Salesforce Connected App Client Secret"
+    severity: HIGH
+    category: "CRM · Salesforce"
+    regex: "(?i)salesforce.{0,20}(client.?secret|consumer.?secret)\\s*[:=]\\s*['\"]?([A-Za-z0-9]{64,})['\"]?"
+
+  - id: VSS-SFD-002
+    name: "Salesforce SOQL Bearer Token"
+    severity: HIGH
+    category: "CRM · Salesforce"
+    regex: "00D[a-zA-Z0-9]{15}![A-Za-z0-9.]{100,}"
+
+  # ── HubSpot ──────────────────────────────────────────────────────────────────
+  - id: VSS-HUB-001
+    name: "HubSpot Private App Token"
+    severity: HIGH
+    category: "CRM · HubSpot"
+    regex: "pat-[a-z]{2}\\d+-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+
+  # ── Zendesk ──────────────────────────────────────────────────────────────────
+  - id: VSS-ZND-001
+    name: "Zendesk API Token"
+    severity: HIGH
+    category: "SaaS · Zendesk"
+    regex: "(?i)zendesk.{0,20}api.?token\\s*[:=]\\s*['\"]?([A-Za-z0-9]{40,})['\"]?"
+
+  # ── Intercom ─────────────────────────────────────────────────────────────────
+  - id: VSS-INC-001
+    name: "Intercom Access Token"
+    severity: HIGH
+    category: "SaaS · Intercom"
+    regex: "(?i)intercom.{0,20}access.?token\\s*[:=]\\s*['\"]?([A-Za-z0-9+/=]{60,})['\"]?"
+
+  # ── Airtable ─────────────────────────────────────────────────────────────────
+  - id: VSS-AIR-001
+    name: "Airtable Personal Access Token"
+    severity: HIGH
+    category: "SaaS · Airtable"
+    regex: "pat[A-Za-z0-9]{14}\\.[a-f0-9]{64}"
+
+  # ── Notion ───────────────────────────────────────────────────────────────────
+  - id: VSS-NOT-001
+    name: "Notion Integration Token"
+    severity: HIGH
+    category: "SaaS · Notion"
+    regex: "secret_[A-Za-z0-9]{43}"
+
+  # ── Linear ───────────────────────────────────────────────────────────────────
+  - id: VSS-LIN-001
+    name: "Linear API Key"
+    severity: MEDIUM
+    category: "SaaS · Linear"
+    regex: "lin_api_[A-Za-z0-9]{40}"
+
+  # ── Figma ────────────────────────────────────────────────────────────────────
+  - id: VSS-FIG-001
+    name: "Figma Personal Access Token"
+    severity: MEDIUM
+    category: "SaaS · Figma"
+    regex: "(?i)figma.{0,20}token\\s*[:=]\\s*['\"]?([A-Za-z0-9\\-]{40,})['\"]?"
+
+  # ── Mapbox ───────────────────────────────────────────────────────────────────
+  - id: VSS-MAP-001
+    name: "Mapbox API Token"
+    severity: MEDIUM
+    category: "SaaS · Mapbox"
+    regex: "pk\\.[a-zA-Z0-9]{60,}\\.[a-zA-Z0-9\\-_]{22,}"
+
+  - id: VSS-MAP-002
+    name: "Mapbox Secret Token"
+    severity: HIGH
+    category: "SaaS · Mapbox"
+    regex: "sk\\.[a-zA-Z0-9]{60,}\\.[a-zA-Z0-9\\-_]{22,}"

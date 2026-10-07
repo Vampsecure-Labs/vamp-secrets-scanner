@@ -1,0 +1,125 @@
+# © VampSecure Studios — VampSecure Labs Security Research Division
+# Reglas: Comunicaciones adicionales y plataformas de pago extra
+format: "1.0"
+source: "VampSecure Labs — curado desde gitleaks/TruffleHog + investigación propia"
+rules:
+  # ── Microsoft Teams ──────────────────────────────────────────────────────────
+  - id: VSS-MST-001
+    name: "Microsoft Teams Incoming Webhook"
+    severity: HIGH
+    category: "Comunicaciones · Microsoft Teams"
+    regex: "https://[a-zA-Z0-9]+\\.webhook\\.office\\.com/webhookb2/[A-Za-z0-9\\-@]+/IncomingWebhook/[A-Za-z0-9]+/[A-Za-z0-9\\-]+"
+
+  # ── Zoom ─────────────────────────────────────────────────────────────────────
+  - id: VSS-ZOM-001
+    name: "Zoom JWT Token"
+    severity: HIGH
+    category: "Comunicaciones · Zoom"
+    regex: "(?i)zoom.{0,20}jwt.{0,20}token\\s*[:=]\\s*['\"]?([A-Za-z0-9\\-_.]{100,})['\"]?"
+
+  - id: VSS-ZOM-002
+    name: "Zoom Server-to-Server OAuth Token"
+    severity: HIGH
+    category: "Comunicaciones · Zoom"
+    regex: "(?i)ZOOM_(?:CLIENT_SECRET|S2S_TOKEN)\\s*[:=]\\s*['\"]?([A-Za-z0-9]{32,})['\"]?"
+
+  # ── Postmark ─────────────────────────────────────────────────────────────────
+  - id: VSS-PMK-001
+    name: "Postmark Server Token"
+    severity: HIGH
+    category: "Correo · Postmark"
+    regex: "(?i)postmark.{0,20}(server.?token|api.?key)\\s*[:=]\\s*['\"]?([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})['\"]?"
+
+  # ── Resend ───────────────────────────────────────────────────────────────────
+  - id: VSS-RSD-001
+    name: "Resend API Key"
+    severity: HIGH
+    category: "Correo · Resend"
+    regex: "re_[A-Za-z0-9]{32}"
+
+  # ── Vonage / Nexmo ───────────────────────────────────────────────────────────
+  - id: VSS-VON-001
+    name: "Vonage (Nexmo) API Secret"
+    severity: HIGH
+    category: "Comunicaciones · Vonage"
+    regex: "(?i)vonage.{0,20}api.?secret\\s*[:=]\\s*['\"]?([A-Za-z0-9]{16})['\"]?"
+
+  # ── MessageBird ──────────────────────────────────────────────────────────────
+  - id: VSS-MBD-001
+    name: "MessageBird API Key"
+    severity: HIGH
+    category: "Comunicaciones · MessageBird"
+    regex: "(?i)messagebird.{0,20}api.?key\\s*[:=]\\s*['\"]?([A-Za-z0-9]{25})['\"]?"
+
+  # ── Square ───────────────────────────────────────────────────────────────────
+  - id: VSS-SQR-001
+    name: "Square Access Token (producción)"
+    severity: CRITICAL
+    category: "Pagos · Square"
+    regex: "sq0atp-[0-9A-Za-z\\-_]{22}"
+
+  - id: VSS-SQR-002
+    name: "Square OAuth Client Secret"
+    severity: CRITICAL
+    category: "Pagos · Square"
+    regex: "sq0csp-[0-9A-Za-z\\-_]{43}"
+
+  # ── Adyen ────────────────────────────────────────────────────────────────────
+  - id: VSS-ADY-001
+    name: "Adyen API Key"
+    severity: CRITICAL
+    category: "Pagos · Adyen"
+    regex: "AQE[a-z0-9A-Z\\-]{20,}"
+
+  # ── Mollie ───────────────────────────────────────────────────────────────────
+  - id: VSS-MOL-001
+    name: "Mollie Live API Key"
+    severity: CRITICAL
+    category: "Pagos · Mollie"
+    regex: "live_[a-zA-Z0-9]{32}"
+
+  - id: VSS-MOL-002
+    name: "Mollie Test API Key"
+    severity: MEDIUM
+    category: "Pagos · Mollie"
+    regex: "test_[a-zA-Z0-9]{32}"
+
+  # ── Razorpay ─────────────────────────────────────────────────────────────────
+  - id: VSS-RAZ-001
+    name: "Razorpay Key Secret"
+    severity: CRITICAL
+    category: "Pagos · Razorpay"
+    regex: "(?i)razorpay.{0,20}key.?secret\\s*[:=]\\s*['\"]?([A-Za-z0-9]{20,})['\"]?"
+
+  # ── Lemon Squeezy ────────────────────────────────────────────────────────────
+  - id: VSS-LSQ-001
+    name: "Lemon Squeezy API Key"
+    severity: HIGH
+    category: "Pagos · LemonSqueezy"
+    regex: "(?i)lemonsqueezy.{0,20}api.?key\\s*[:=]\\s*['\"]?([A-Za-z0-9\\-]{40,})['\"]?"
+
+  # ── Paddle ───────────────────────────────────────────────────────────────────
+  - id: VSS-PAD-001
+    name: "Paddle API Key"
+    severity: HIGH
+    category: "Pagos · Paddle"
+    regex: "(?i)PADDLE_API_KEY\\s*[:=]\\s*['\"]?([A-Za-z0-9]{40,})['\"]?"
+
+  # ── Crypto wallets ───────────────────────────────────────────────────────────
+  - id: VSS-CRY-001
+    name: "Clave privada Ethereum (hex 64)"
+    severity: CRITICAL
+    category: "Crypto · Ethereum"
+    regex: "(?i)(eth.?private.?key|ethereum.?private.?key|PRIVATE_KEY)\\s*[:=]\\s*['\"]?(?:0x)?([a-fA-F0-9]{64})['\"]?"
+
+  - id: VSS-CRY-002
+    name: "Mnemonic seed phrase (12 palabras)"
+    severity: CRITICAL
+    category: "Crypto · Mnemonic"
+    regex: "(?i)(seed.?phrase|mnemonic|wallet.?seed)\\s*[:=]\\s*['\"]?([a-z]+ ){11}[a-z]+['\"]?"
+
+  - id: VSS-CRY-003
+    name: "Binance API Secret"
+    severity: CRITICAL
+    category: "Crypto · Binance"
+    regex: "(?i)binance.{0,20}api.?secret\\s*[:=]\\s*['\"]?([A-Za-z0-9]{64})['\"]?"

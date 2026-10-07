@@ -1,0 +1,106 @@
+# © VampSecure Studios — VampSecure Labs Security Research Division
+# Reglas: Autenticación, identidad y SSO
+format: "1.0"
+source: "VampSecure Labs — curado desde gitleaks/TruffleHog + investigación propia"
+rules:
+  # ── Okta ────────────────────────────────────────────────────────────────────
+  - id: VSS-OKT-001
+    name: "Okta API Token"
+    severity: CRITICAL
+    category: "Auth · Okta"
+    regex: "(?i)okta.{0,20}api.?token\\s*[:=]\\s*['\"]?([A-Za-z0-9\\-_]{42,44})['\"]?"
+
+  - id: VSS-OKT-002
+    name: "Okta SSWS Token"
+    severity: CRITICAL
+    category: "Auth · Okta"
+    regex: "SSWS[A-Za-z0-9\\-_]{42,44}"
+
+  # ── Auth0 ────────────────────────────────────────────────────────────────────
+  - id: VSS-AU0-001
+    name: "Auth0 Client Secret"
+    severity: CRITICAL
+    category: "Auth · Auth0"
+    regex: "(?i)auth0.{0,20}client.?secret\\s*[:=]\\s*['\"]?([A-Za-z0-9\\-_]{40,})['\"]?"
+
+  - id: VSS-AU0-002
+    name: "Auth0 Management API Token"
+    severity: CRITICAL
+    category: "Auth · Auth0"
+    regex: "(?i)AUTH0_MANAGEMENT_API_TOKEN\\s*[:=]\\s*['\"]?([A-Za-z0-9\\-_.]{60,})['\"]?"
+
+  # ── Cognito ──────────────────────────────────────────────────────────────────
+  - id: VSS-COG-001
+    name: "AWS Cognito User Pool Client Secret"
+    severity: HIGH
+    category: "Auth · AWS Cognito"
+    regex: "(?i)cognito.{0,20}client.?secret\\s*[:=]\\s*['\"]?([A-Za-z0-9+/]{39,})['\"]?"
+
+  # ── Keycloak ─────────────────────────────────────────────────────────────────
+  - id: VSS-KEY-001
+    name: "Keycloak Client Secret"
+    severity: HIGH
+    category: "Auth · Keycloak"
+    regex: "(?i)keycloak.{0,20}client.?secret\\s*[:=]\\s*['\"]?([A-Za-z0-9\\-]{32,})['\"]?"
+
+  # ── Firebase Auth ─────────────────────────────────────────────────────────────
+  - id: VSS-FAU-001
+    name: "Firebase Web App Config"
+    severity: MEDIUM
+    category: "Auth · Firebase"
+    regex: "\"apiKey\"\\s*:\\s*\"(AIza[0-9A-Za-z\\-_]{35})\""
+
+  # ── LDAP / Active Directory ───────────────────────────────────────────────────
+  - id: VSS-LDP-001
+    name: "LDAP Bind Password en URI"
+    severity: CRITICAL
+    category: "Auth · LDAP"
+    regex: "ldap(?:s)?://[^:]+:[^@]{3,}@[^\\s\"']+"
+
+  - id: VSS-LDP-002
+    name: "LDAP Bind Password (contexto)"
+    severity: CRITICAL
+    category: "Auth · LDAP"
+    regex: "(?i)ldap.{0,20}(bind.?password|password)\\s*[:=]\\s*['\"]([^'\"]{6,})['\"]"
+
+  # ── SAML ─────────────────────────────────────────────────────────────────────
+  - id: VSS-SAM-001
+    name: "SAML Signing Certificate Private Key"
+    severity: CRITICAL
+    category: "Auth · SAML"
+    regex: "(?i)saml.{0,40}-----BEGIN\\s*(RSA\\s+|EC\\s+)?PRIVATE\\s+KEY-----"
+
+  # ── WorkOS ───────────────────────────────────────────────────────────────────
+  - id: VSS-WOS-001
+    name: "WorkOS API Key"
+    severity: HIGH
+    category: "Auth · WorkOS"
+    regex: "sk_[a-z]{2,8}_[A-Za-z0-9]{32,}"
+
+  # ── Clerk ─────────────────────────────────────────────────────────────────────
+  - id: VSS-CLK-001
+    name: "Clerk Secret Key"
+    severity: CRITICAL
+    category: "Auth · Clerk"
+    regex: "sk_(?:live|test)_[A-Za-z0-9]{40,}"
+
+  # ── Supertokens ───────────────────────────────────────────────────────────────
+  - id: VSS-STK-001
+    name: "SuperTokens API Key"
+    severity: HIGH
+    category: "Auth · SuperTokens"
+    regex: "(?i)supertokens.{0,20}api.?key\\s*[:=]\\s*['\"]?([A-Za-z0-9\\-_]{32,})['\"]?"
+
+  # ── 1Password ────────────────────────────────────────────────────────────────
+  - id: VSS-1PW-001
+    name: "1Password Connect Server Token"
+    severity: CRITICAL
+    category: "Auth · 1Password"
+    regex: "(?i)1password.{0,20}connect.{0,20}token\\s*[:=]\\s*['\"]?([A-Za-z0-9+/=.\\-_]{88,})['\"]?"
+
+  # ── Bitwarden ────────────────────────────────────────────────────────────────
+  - id: VSS-BTW-001
+    name: "Bitwarden Client Secret"
+    severity: HIGH
+    category: "Auth · Bitwarden"
+    regex: "(?i)bitwarden.{0,20}client.?secret\\s*[:=]\\s*['\"]?([A-Za-z0-9\\-]{32,})['\"]?"
