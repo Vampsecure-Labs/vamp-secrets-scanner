@@ -182,6 +182,51 @@ python vamp_secrets_scanner.py . --verify
 | `2` | One or more CRITICAL findings detected |
 | `130` | Interrupted by user (Ctrl+C) |
 
+## Why vamp-secrets-scanner vs. TruffleHog v3 · Gitleaks v8 · detect-secrets
+
+| Capability | vamp-secrets-scanner | TruffleHog v3 | Gitleaks v8 | detect-secrets |
+|------------|---------------------|---------------|-------------|----------------|
+| Pattern count | ✅ 300+ (9 YAML modules) | ✅ ~700 detectors | ✅ ~150 rules | ✅ ~30 plugins |
+| Custom rule modules (no recompile) | ✅ Drop-in YAML, hot-reload | ❌ Go source required | ✅ TOML config | ✅ Python plugins |
+| Live credential verification (AWS STS) | ✅ `--verify` | ✅ Built-in | ❌ | ❌ |
+| Shannon entropy + pattern combined | ✅ Configurable threshold | ✅ | ❌ | ✅ |
+| Daemon / watch mode | ✅ `--watch N` | ❌ | ❌ | ❌ |
+| Delta tracking (NEW / RECURRING / RESOLVED) | ✅ `--delta FILE` | ❌ | ❌ | ❌ |
+| SARIF 2.1.0 export | ✅ | ✅ | ✅ | ❌ |
+| Kubernetes Secrets scan | ✅ `--k8s` | ❌ | ❌ | ❌ |
+| Docker runtime scan | ✅ | ❌ | ❌ | ❌ |
+| Spanish PII (DNI / NIE / CIF / NUSS) | ✅ | ❌ | ❌ | ❌ |
+| Pre-commit hook installer | ✅ `--install-hook` | ❌ | ✅ | ✅ |
+| Semgrep rule export | ✅ `--export-semgrep` | ❌ | ❌ | ❌ |
+| Importable Python package | ✅ | ❌ | ❌ | ✅ |
+| VSL engagement report (HTML / PDF) | ✅ `vampsec_report` | ❌ | ❌ | ❌ |
+
+- **Modular YAML** — new secret categories drop in without touching the engine; perfect for regulated environments that need custom pattern sets per client engagement.
+- **Daemon + delta** — `--watch N` combined with `--delta FILE` turns the scanner into a continuous monitor that flags only new regressions, reducing alert fatigue in CI/CD.
+- **Spanish PII coverage** — DNI, NIE, CIF, NUSS, and NHS numbers alongside international IBANs, enabling compliance with GDPR Art. 83 and ENS.
+- **Unified report** — the shared `vampsec_report` module produces the same VSL-branded HTML/PDF as every other Labs tool, so one engagement covers the full toolkit run.
+
+## Check Coverage
+
+| Check category | Standard | Severity |
+|----------------|----------|----------|
+| AWS Access Key ID + Secret (regex + entropy) | OWASP ASVS V2.10 / CWE-798 | CRITICAL |
+| GCP, Azure, Oracle Cloud service account keys | CWE-312 | CRITICAL |
+| GitHub PAT / GitLab PAT / Bitbucket App password | CWE-798 | HIGH |
+| Stripe live secret / PayPal / Braintree / Square | CWE-312 | CRITICAL |
+| Slack / Telegram Bot Token / Discord webhook | CWE-798 | HIGH |
+| Database DSN (PostgreSQL, MySQL, MongoDB Atlas, Redis) | CWE-312 | HIGH |
+| PEM private keys (RSA, EC, PKCS8, WireGuard `PrivateKey=`) | CWE-321 | CRITICAL |
+| JWT secret / HS256 signing key | CWE-798 | HIGH |
+| IoT credentials (AWS IoT, Azure IoT, Firebase) | `iot_embedded.yaml` | HIGH |
+| SaaS tokens (Salesforce, ServiceNow, HubSpot, Monday) | `enterprise_streaming.yaml` | HIGH |
+| Streaming platform keys (Confluent, Pulsar, RabbitMQ) | `enterprise_streaming.yaml` | MEDIUM |
+| Spanish PII — DNI / NIE / CIF / NUSS | GDPR Art. 83 / ENS | MEDIUM |
+| Credit / debit card PANs (Visa, MC, Amex, Discover) | PCI-DSS / CWE-312 | HIGH |
+| High-entropy assignment-context strings | OWASP ASVS V2.10 | MEDIUM–HIGH |
+| Git history — deleted secrets in commit objects | CWE-312 | varies |
+| Kubernetes Secret manifests (`--k8s`) | CWE-312 | HIGH |
+
 ## Part of VampSecure Labs Toolkit
 
 This tool is part of the **VampSecure Labs Security Toolkit** — a collection of research-grade security tools for authorized penetration testing and red/blue team exercises.
