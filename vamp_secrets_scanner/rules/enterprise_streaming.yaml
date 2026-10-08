@@ -1,0 +1,174 @@
+# © VampSecure Studios — VampSecure Labs Security Research Division
+# Reglas: Enterprise SaaS, Streaming, Bases de datos cloud, IoT, Gaming,
+#         Herramientas de seguridad e infraestructura virtual
+format: "1.0"
+source: "VampSecure Labs — curado desde gitleaks/TruffleHog + investigación propia"
+rules:
+  # ── Enterprise SaaS ──────────────────────────────────────────────────────────
+  - id: VSS-SFC-001
+    name: "Salesforce Connected App Consumer Secret"
+    severity: HIGH
+    category: "Enterprise SaaS · Salesforce"
+    regex: "(?i)(salesforce|sfdc).{0,30}consumer.?secret\\s*[:=]\\s*['\"]?([A-Za-z0-9]{48,64})['\"]?"
+
+  - id: VSS-SNW-001
+    name: "ServiceNow OAuth Token / API Key"
+    severity: HIGH
+    category: "Enterprise SaaS · ServiceNow"
+    regex: "(?i)servicenow.{0,30}(token|api.?key)\\s*[:=]\\s*['\"]?([a-zA-Z0-9_\\-]{32,})['\"]?"
+
+  - id: VSS-HBS-001
+    name: "HubSpot Private App Token (pat-)"
+    severity: HIGH
+    category: "Enterprise SaaS · HubSpot"
+    regex: "pat-(na|eu|au)1-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+
+  - id: VSS-MON-001
+    name: "Monday.com Personal API Token"
+    severity: HIGH
+    category: "Enterprise SaaS · Monday.com"
+    regex: "(?i)(monday_api_token|monday\\.com.{0,20}token)\\s*[:=]\\s*['\"]?([a-zA-Z0-9._\\-]{60,})['\"]?"
+
+  - id: VSS-FDK-001
+    name: "Freshdesk API Key"
+    severity: HIGH
+    category: "Enterprise SaaS · Freshdesk"
+    regex: "(?i)freshdesk.{0,30}api.?key\\s*[:=]\\s*['\"]?([a-zA-Z0-9]{20,})['\"]?"
+
+  - id: VSS-INB-001
+    name: "Intercom Access Token / API Key"
+    severity: HIGH
+    category: "Enterprise SaaS · Intercom"
+    regex: "(?i)intercom.{0,30}(access.?token|api.?key)\\s*[:=]\\s*['\"]?([a-zA-Z0-9_\\-]{40,})['\"]?"
+
+  # ── Streaming y mensajería ────────────────────────────────────────────────────
+  - id: VSS-CNF-001
+    name: "Confluent Cloud API Key"
+    severity: HIGH
+    category: "Streaming · Confluent"
+    regex: "(?i)confluent.{0,30}api.?key\\s*[:=]\\s*['\"]?([A-Z0-9]{16})['\"]?"
+
+  - id: VSS-CNF-002
+    name: "Confluent Cloud API Secret"
+    severity: CRITICAL
+    category: "Streaming · Confluent"
+    regex: "(?i)confluent.{0,30}api.?secret\\s*[:=]\\s*['\"]?([A-Za-z0-9+/]{64})['\"]?"
+
+  - id: VSS-PLS-001
+    name: "Apache Pulsar JWT Token"
+    severity: HIGH
+    category: "Streaming · Apache Pulsar"
+    regex: "(?i)pulsar.{0,40}(token|jwt)\\s*[:=]\\s*['\"]?(eyJ[A-Za-z0-9._\\-]{80,})['\"]?"
+
+  - id: VSS-RBQ-001
+    name: "RabbitMQ AMQP URL con credenciales"
+    severity: CRITICAL
+    category: "Streaming · RabbitMQ"
+    regex: "amqps?://[^:\\s\"']+:[^@\\s\"']+@[^/\\s\"']+"
+
+  # ── Bases de datos cloud ──────────────────────────────────────────────────────
+  - id: VSS-MAT-001
+    name: "MongoDB Atlas API Key (UUID format)"
+    severity: HIGH
+    category: "Base de datos · MongoDB Atlas"
+    regex: "(?i)(mongodb.?atlas|atlas).{0,30}(api.?key|programmatic).{0,20}([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})"
+
+  - id: VSS-CKR-001
+    name: "CockroachDB Cloud API Token"
+    severity: HIGH
+    category: "Base de datos · CockroachDB"
+    regex: "(?i)cockroach(db)?.{0,30}(api.?key|token)\\s*[:=]\\s*['\"]?([a-zA-Z0-9_\\-]{32,})['\"]?"
+
+  - id: VSS-PSC-001
+    name: "PlanetScale API Token (pscale_tkn_)"
+    severity: HIGH
+    category: "Base de datos · PlanetScale"
+    regex: "pscale_tkn_[a-zA-Z0-9]{40,}"
+
+  - id: VSS-SPB-001
+    name: "Supabase Service Role Key (JWT)"
+    severity: CRITICAL
+    category: "Base de datos · Supabase"
+    regex: "(?i)(supabase.{0,30}service.?role|SUPABASE_SERVICE_ROLE_KEY)\\s*[:=]\\s*['\"]?(eyJ[A-Za-z0-9._\\-]{100,})['\"]?"
+
+  # ── IoT ───────────────────────────────────────────────────────────────────────
+  - id: VSS-AIT-001
+    name: "AWS IoT Endpoint URL con credenciales"
+    severity: HIGH
+    category: "IoT · AWS IoT"
+    regex: "[a-z0-9]{14}-ats\\.iot\\.[a-z0-9\\-]+\\.amazonaws\\.com"
+
+  - id: VSS-AZI-001
+    name: "Azure IoT Hub Connection String con SAS Key"
+    severity: CRITICAL
+    category: "IoT · Azure IoT Hub"
+    regex: "HostName=[a-zA-Z0-9\\-]+\\.azure-devices\\.net;SharedAccessKeyName=[^;]+;SharedAccessKey=[A-Za-z0-9/+=]{44}"
+
+  # ── Mobile y gaming ───────────────────────────────────────────────────────────
+  - id: VSS-FSA-001
+    name: "Firebase Service Account Private Key ID"
+    severity: CRITICAL
+    category: "Mobile · Firebase"
+    regex: "\"private_key_id\"\\s*:\\s*\"([a-f0-9]{40})\""
+
+  - id: VSS-UNT-001
+    name: "Unity Dashboard API Key / Access Token"
+    severity: HIGH
+    category: "Gaming · Unity"
+    regex: "(?i)unity.{0,30}(api.?key|access.?token)\\s*[:=]\\s*['\"]?([a-zA-Z0-9_\\-]{32,})['\"]?"
+
+  - id: VSS-RVC-001
+    name: "RevenueCat Secret API Key (strk_)"
+    severity: HIGH
+    category: "Mobile · RevenueCat"
+    regex: "strk_[A-Za-z0-9]{40}"
+
+  # ── Herramientas de seguridad ─────────────────────────────────────────────────
+  - id: VSS-SNK-001
+    name: "Snyk API Token (UUID)"
+    severity: HIGH
+    category: "Seguridad · Snyk"
+    regex: "(?i)snyk.{0,30}(api.?key|token)\\s*[:=]\\s*['\"]?([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})['\"]?"
+
+  - id: VSS-SQB-001
+    name: "SonarQube User Token (squ_)"
+    severity: HIGH
+    category: "Seguridad · SonarQube"
+    regex: "squ_[a-f0-9]{40}"
+
+  - id: VSS-CMX-001
+    name: "Checkmarx API Token / Client Secret"
+    severity: HIGH
+    category: "Seguridad · Checkmarx"
+    regex: "(?i)checkmarx.{0,30}(token|api.?key|client.?secret)\\s*[:=]\\s*['\"]?([a-zA-Z0-9_\\-]{32,})['\"]?"
+
+  # ── Infraestructura virtual ───────────────────────────────────────────────────
+  - id: VSS-PMX-001
+    name: "Proxmox API Token (user@realm!token=UUID)"
+    severity: HIGH
+    category: "Infraestructura · Proxmox"
+    regex: "[a-zA-Z0-9]+@(pam|pve|realm)[^=]*![a-zA-Z0-9\\-]+=([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})"
+
+  - id: VSS-VMW-001
+    name: "VMware vSphere Session Token / vCenter API Token"
+    severity: HIGH
+    category: "Infraestructura · VMware"
+    regex: "(?i)(vsphere|vcenter|vmware).{0,30}(session|token|api.?key)\\s*[:=]\\s*['\"]?([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})['\"]?"
+
+  - id: VSS-NTX-001
+    name: "Nutanix REST API Session Token / Prism API Key"
+    severity: HIGH
+    category: "Infraestructura · Nutanix"
+    regex: "(?i)nutanix.{0,30}(token|api.?key|session)\\s*[:=]\\s*['\"]?([a-zA-Z0-9_\\-+/=]{32,})['\"]?"
+
+  - id: VSS-TFC-001
+    name: "Terraform Cloud / Atlas API Token"
+    severity: CRITICAL
+    category: "Infraestructura · Terraform Cloud"
+    regex: "[A-Za-z0-9]{14}\\.(atlasv1|teamv1|teamv2|orgv2)\\.[A-Za-z0-9]{60,}"
+
+  - id: VSS-VLT-001
+    name: "HashiCorp Vault Service Token (hvs.)"
+    severity: CRITICAL
+    category: "Infraestructura · HashiCorp Vault"
+    regex: "hvs\\.[A-Za-z0-9_\\-]{90,}"

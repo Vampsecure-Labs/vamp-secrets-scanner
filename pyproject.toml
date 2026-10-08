@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vamp-secrets-scanner"
-version = "3.0.0"
-description = "Static secrets and credentials scanner — motor de reglas YAML extensible, 280+ patrones (IA APIs, cloud, CI/CD, SaaS, auth, cripto), git history, entropía Shannon, SARIF 2.1.0, Docker/K8s, delta scan · librería importable"
+version = "3.1.0"
+description = "Static secrets and credentials scanner — motor de reglas YAML extensible, 300+ patrones (IA APIs, cloud, CI/CD, SaaS, enterprise, streaming, IoT, cripto), git history, entropía Shannon, SARIF 2.1.0, Docker/K8s, delta scan · librería importable"
 readme = "README.md"
 license = { text = "AGPL-3.0-only" }
 requires-python = ">=3.10"
