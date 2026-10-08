@@ -200,7 +200,8 @@ For authorized security testing only.
 
 | Versión | Cambios principales |
 |---------|---------------------|
-| v3.0.0 | Motor YAML extensible — 9 ficheros `rules/*.yaml`, **271 patrones** (×3.5 vs v2.7); nuevas categorías: IA APIs, hardware/web3/gaming/enterprise; daemon mode `--watch N`; `--delta FILE` diff; paquete importable |
+| v3.1.0 | **+29 patrones enterprise/streaming/IoT** · `enterprise_streaming.yaml`: Salesforce, ServiceNow, HubSpot, Monday, Freshdesk, Intercom, Confluent, Pulsar, RabbitMQ, MongoDB Atlas, CockroachDB, PlanetScale, Supabase, AWS IoT, Azure IoT, Firebase, Unity, RevenueCat, Snyk, SonarQube, Checkmarx, Proxmox, VMware, Nutanix, Terraform Cloud, HashiCorp Vault · **300+ patrones totales** · 9 ficheros YAML |
+| v3.0.0 | Motor YAML extensible — 8 ficheros `rules/*.yaml`, **271 patrones** (×3.5 vs v2.7); nuevas categorías: IA APIs, hardware/web3/gaming/enterprise; daemon mode `--watch N`; `--delta FILE` diff; paquete importable |
 | v2.7.0 | +15 SaaS patterns (Stripe, Twilio, SendGrid, Mailgun, Resend, Postmark...); `--only-critical`; entropy threshold configurable |
 | v2.6.0 | `--delta FILE` — NEW/RECURRING/RESOLVED por fingerprint SHA |
 | v2.5.0 | `--watch N` daemon mode con notificaciones Telegram; `--export-semgrep` |
