@@ -59,7 +59,7 @@ brew install vampsecure-labs/labs/vamp-secrets-scanner
 ```
 
 ```bash
-git clone https://github.com/belky-me/vamp-secrets-scanner.git
+git clone https://github.com/Vampsecure-Labs/vamp-secrets-scanner.git
 cd vamp-secrets-scanner
 pip install -r requirements.txt
 ```
@@ -136,7 +136,7 @@ python vamp_secrets_scanner.py . --verify
 ## Sample Output
 
 ```
-  vamp-secrets-scanner v2.2 · 77 patterns · scanning: /repo/
+  vamp-secrets-scanner v3.0.0 · 271 patterns · scanning: /repo/
   ──────────────────────────────────────────────────────────────
   [CRITICAL] AWS Access Key ID                  config.py:14
              AKIAIOSFODNN7EXAMPLE
@@ -186,8 +186,8 @@ python vamp_secrets_scanner.py . --verify
 
 This tool is part of the **VampSecure Labs Security Toolkit** — a collection of research-grade security tools for authorized penetration testing and red/blue team exercises.
 
-- Full toolkit: [github.com/belky-me](https://github.com/belky-me)
-- Orchestrator: [github.com/belky-me/vamp-orchestrator](https://github.com/belky-me/vamp-orchestrator)
+- Full toolkit: [github.com/Vampsecure-Labs](https://github.com/Vampsecure-Labs)
+- Orchestrator: [github.com/Vampsecure-Labs/vamp-orchestrator](https://github.com/Vampsecure-Labs/vamp-orchestrator)
 
 ---
 
@@ -196,5 +196,20 @@ For authorized security testing only.
 
 ---
 
-## Versión
-v2.2 — VampSecure Labs Security Research Division
+## Historial de versiones
+
+| Versión | Cambios principales |
+|---------|---------------------|
+| v3.0.0 | Motor YAML extensible — 9 ficheros `rules/*.yaml`, **271 patrones** (×3.5 vs v2.7); nuevas categorías: IA APIs, hardware/web3/gaming/enterprise; daemon mode `--watch N`; `--delta FILE` diff; paquete importable |
+| v2.7.0 | +15 SaaS patterns (Stripe, Twilio, SendGrid, Mailgun, Resend, Postmark...); `--only-critical`; entropy threshold configurable |
+| v2.6.0 | `--delta FILE` — NEW/RECURRING/RESOLVED por fingerprint SHA |
+| v2.5.0 | `--watch N` daemon mode con notificaciones Telegram; `--export-semgrep` |
+| v2.4.0 | Kubernetes Secrets scan (`--k8s`); `--install-hook` pre-commit |
+| v2.3.0 | SARIF 2.1.0 export; `--verify` verificación live AWS |
+| v2.2.0 | 77 patrones; Docker runtime scan; git history scan; SARIF beta |
+| v1.0.0 | MVP 40+ patrones básicos (AWS, GCP, GitHub, Slack) |
+
+---
+
+© VampSecure Studios — VampSecure Labs Security Research Division
+For authorized security testing only.
