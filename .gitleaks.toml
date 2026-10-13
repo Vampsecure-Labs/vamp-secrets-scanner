@@ -21,3 +21,28 @@ paths = [
   '''docs/.*''',
   '''\.github/.*''',
 ]
+
+[[allowlists]]
+description = "Test fixtures — synthetic secrets used to verify scanner detection (not real credentials)"
+paths = [
+  '''tests/.*''',
+  '''test_.*\.py''',
+  '''.*_test\.py''',
+  '''conftest\.py''',
+]
+
+[[allowlists]]
+description = "Scanner internal patterns — regex strings and sample output that match secret patterns by design"
+# stopwords match against the extracted secret value
+stopwords = [
+  "VAULT_SKIP_VERIFY",
+  "BEGIN RSA PRIVATE KEY",
+  "BEGIN OPENSSH PRIVATE KEY",
+  "BEGIN EC PRIVATE KEY",
+  "BEGIN PRIVATE KEY",
+]
+# also covers historical commits where vamp_secrets_scanner.py existed as a flat file
+paths = [
+  '''vamp_secrets_scanner\.py''',
+  '''vamp_secrets_scanner/.*\.py''',
+]
