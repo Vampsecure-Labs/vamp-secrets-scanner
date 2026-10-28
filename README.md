@@ -138,7 +138,7 @@ python vamp_secrets_scanner.py . --verify
 ### Sample Output
 
 ```
-  vamp-secrets-scanner v3.1.1 · 271 patterns · scanning: /repo/
+  vamp-secrets-scanner v3.1.0 · 271 patterns · scanning: /repo/
   ──────────────────────────────────────────────────────────────
   [CRITICAL] AWS Access Key ID                  config.py:14
              AKIAIOSFODNN7EXAMPLE
@@ -381,7 +381,7 @@ python vamp_secrets_scanner.py . --verify
 ### Sample Output
 
 ```
-  vamp-secrets-scanner v3.1.1 · 271 patrones · escaneando: /repo/
+  vamp-secrets-scanner v3.1.0 · 271 patrones · escaneando: /repo/
   ──────────────────────────────────────────────────────────────
   [CRITICAL] AWS Access Key ID                  config.py:14
              AKIAIOSFODNN7EXAMPLE
