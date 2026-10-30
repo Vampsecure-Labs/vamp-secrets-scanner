@@ -17,7 +17,7 @@ from typing import Dict, List
 
 from rich.console import Console
 
-from ._models import VERSION, TOOL_NAME, Severity, _SEVERITY_ORDER, Finding
+from ._models import VERSION, TOOL_NAME, Severity, _SEVERITY_ORDER, Finding, t
 
 _console = Console()
 
@@ -83,7 +83,7 @@ def export_html(findings: List[Finding], target: str, path: str) -> None:
         return "\n".join(out)
 
     html = f"""<!DOCTYPE html>
-<html lang="es">
+<html lang="{t('en', 'es')}">
 <head>
 <meta charset="UTF-8">
 <title>VampSecure Labs — Secrets Scan — {escape(target)}</title>
@@ -122,17 +122,17 @@ function toggle(row){{
 
 <div class="summary">
   <div class="kpi"><div class="kpi-n tot-n">{len(findings)}</div><div class="kpi-l">TOTAL</div></div>
-  <div class="kpi"><div class="kpi-n crit-n">{crit}</div><div class="kpi-l">CRÍTICO</div></div>
-  <div class="kpi"><div class="kpi-n high-n">{high}</div><div class="kpi-l">ALTO</div></div>
-  <div class="kpi"><div class="kpi-n med-n">{med}</div><div class="kpi-l">MEDIO</div></div>
-  <div class="kpi"><div class="kpi-n low-n">{low}</div><div class="kpi-l">BAJO</div></div>
+  <div class="kpi"><div class="kpi-n crit-n">{crit}</div><div class="kpi-l">{t('CRITICAL', 'CRÍTICO')}</div></div>
+  <div class="kpi"><div class="kpi-n high-n">{high}</div><div class="kpi-l">{t('HIGH', 'ALTO')}</div></div>
+  <div class="kpi"><div class="kpi-n med-n">{med}</div><div class="kpi-l">{t('MEDIUM', 'MEDIO')}</div></div>
+  <div class="kpi"><div class="kpi-n low-n">{low}</div><div class="kpi-l">{t('LOW', 'BAJO')}</div></div>
 </div>
 
-<h2>Hallazgos (clic en fila para ver contexto)</h2>
+<h2>{t('Findings (click row to expand)', 'Hallazgos (clic en fila para ver contexto)')}</h2>
 <table>
   <thead><tr>
-    <th>Severidad</th><th>Fichero : Línea</th><th>Patrón</th>
-    <th>Categoría</th><th>Extracto</th>
+    <th>{t('Severity', 'Severidad')}</th><th>{t('File : Line', 'Fichero : Línea')}</th><th>{t('Pattern', 'Patrón')}</th>
+    <th>{t('Category', 'Categoría')}</th><th>{t('Excerpt', 'Extracto')}</th>
   </tr></thead>
   <tbody>{rows()}</tbody>
 </table>
@@ -195,7 +195,10 @@ def export_sarif(findings: List[Finding], target: str, path: str) -> None:
         result_entry: dict = {
             "ruleId": rule_id,
             "level": level,
-            "message": {"text": f"{f.pattern} detectado en {rel_file}:{f.line_no} — {f.preview}"},
+            "message": {"text": t(
+                f"{f.pattern} detected in {rel_file}:{f.line_no} — {f.preview}",
+                f"{f.pattern} detectado en {rel_file}:{f.line_no} — {f.preview}",
+            )},
             "locations": [{
                 "physicalLocation": {
                     "artifactLocation": {
@@ -243,7 +246,10 @@ def export_sarif(findings: List[Finding], target: str, path: str) -> None:
     }
 
     Path(path).write_text(json.dumps(sarif_doc, indent=2, ensure_ascii=False), encoding="utf-8")
-    _console.print(f"[dim]  SARIF → {path} ({len(results)} resultados)[/]")
+    _console.print(t(
+        f"[dim]  SARIF → {path} ({len(results)} results)[/]",
+        f"[dim]  SARIF → {path} ({len(results)} resultados)[/]",
+    ))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -270,33 +276,45 @@ def _findings_vsl(findings: List[Finding], target: str) -> list:
             ruta_relativa = f.file
 
         partes_evidencia = [
-            f"Fichero: {ruta_relativa}:{f.line_no}",
-            f"Patrón: {f.pattern}",
-            f"Categoría: {f.category}",
-            f"Extracto (censurado): {f.preview}",
+            t(f"File: {ruta_relativa}:{f.line_no}",   f"Fichero: {ruta_relativa}:{f.line_no}"),
+            t(f"Pattern: {f.pattern}",                f"Patrón: {f.pattern}"),
+            t(f"Category: {f.category}",              f"Categoría: {f.category}"),
+            t(f"Excerpt (censored): {f.preview}",     f"Extracto (censurado): {f.preview}"),
         ]
         if f.git_commit:
-            partes_evidencia.append(
+            partes_evidencia.append(t(
+                f"Git commit: {f.git_commit[:12]} "
+                + (f"by {f.git_author}" if f.git_author else "")
+                + (f" ({f.git_date})" if f.git_date else ""),
                 f"Commit git: {f.git_commit[:12]} "
                 + (f"por {f.git_author}" if f.git_author else "")
-                + (f" ({f.git_date})" if f.git_date else "")
-            )
+                + (f" ({f.git_date})" if f.git_date else ""),
+            ))
 
         hallazgos.append(VSLFinding(
             id          = f"SEC-{n:03d}",
-            title       = f"{f.pattern} detectado en {ruta_relativa}",
+            title       = t(
+                f"{f.pattern} detected in {ruta_relativa}",
+                f"{f.pattern} detectado en {ruta_relativa}",
+            ),
             severity    = sev_val,
-            description = (
+            description = t(
+                f"Pattern '{f.pattern}' (category: {f.category}) detected "
+                f"in file {ruta_relativa} at line {f.line_no}. "
+                "The presence of this secret in source code poses an exposure risk.",
                 f"Se ha detectado el patrón '{f.pattern}' (categoría: {f.category}) "
                 f"en el fichero {ruta_relativa} línea {f.line_no}. "
-                "La presencia de este secreto en el código fuente supone un riesgo de exposición."
+                "La presencia de este secreto en el código fuente supone un riesgo de exposición.",
             ),
             evidence    = " | ".join(partes_evidencia),
             affected    = ruta_relativa,
-            remediation = (
+            remediation = t(
+                f"Remove the secret from '{ruta_relativa}', rotate the affected credentials, "
+                "and add the path to .gitignore. If it appears in git history, "
+                "clean it with git-filter-repo or BFG Repo Cleaner.",
                 f"Eliminar el secreto del fichero '{ruta_relativa}', rotar las credenciales "
                 f"afectadas y añadir la ruta a .gitignore. Si aparece en historial git, "
-                "limpiar con git-filter-repo o BFG Repo Cleaner."
+                "limpiar con git-filter-repo o BFG Repo Cleaner.",
             ),
             tags        = ["secrets", "sast", f.category.split("·")[0].strip().lower()],
         ))

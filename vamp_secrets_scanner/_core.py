@@ -24,7 +24,7 @@ from typing import Dict, Iterator, List, Optional, Set
 from rich.console import Console
 
 from ._models import (
-    VERSION, TOOL_NAME,
+    VERSION, TOOL_NAME, t,
     SECRET_PATTERNS, _RAW_PATTERNS,
     EXCLUDE_DIRS, INCLUDE_EXTENSIONS, INCLUDE_FILENAMES, BINARY_EXTENSIONS,
     Severity, _SEVERITY_ORDER, Finding,
@@ -405,14 +405,29 @@ def scan_vault_misconfig(path: Path) -> List[Finding]:
             findings.append(Finding(
                 file        = str(hcl_file),
                 line_no     = linea,
-                pattern     = "SECRET-VAULT-001: Vault PKI sin allowed_domains (CVE-2026-5052)",
+                pattern     = t(
+                    "SECRET-VAULT-001: Vault PKI missing allowed_domains (CVE-2026-5052)",
+                    "SECRET-VAULT-001: Vault PKI sin allowed_domains (CVE-2026-5052)",
+                ),
                 category    = "Vault · Misconfig",
                 severity    = Severity.CRITICAL,
-                preview     = "PKI capabilities=* sin allowed_domains",
+                preview     = t(
+                    "PKI capabilities=* without allowed_domains",
+                    "PKI capabilities=* sin allowed_domains",
+                ),
                 context     = [
-                    "  CVE-2026-5052: política PKI con capabilities=[\"*\"] y sin",
-                    "  restricción allowed_domains → SSRF explotable en endpoint",
-                    "  de emisión de certificados de Vault.",
+                    t(
+                        "  CVE-2026-5052: PKI policy with capabilities=[\"*\"] and no",
+                        "  CVE-2026-5052: política PKI con capabilities=[\"*\"] y sin",
+                    ),
+                    t(
+                        "  allowed_domains restriction → exploitable SSRF on Vault",
+                        "  restricción allowed_domains → SSRF explotable en endpoint",
+                    ),
+                    t(
+                        "  certificate issuance endpoint.",
+                        "  de emisión de certificados de Vault.",
+                    ),
                 ],
                 fingerprint = fp,
             ))
@@ -426,14 +441,29 @@ def scan_vault_misconfig(path: Path) -> List[Finding]:
             findings.append(Finding(
                 file        = str(hcl_file),
                 line_no     = linea,
-                pattern     = "SECRET-VAULT-001b: Vault PKI TTL excesivo (>10 años)",
+                pattern     = t(
+                    "SECRET-VAULT-001b: Vault PKI excessive TTL (>10 years)",
+                    "SECRET-VAULT-001b: Vault PKI TTL excesivo (>10 años)",
+                ),
                 category    = "Vault · Misconfig",
                 severity    = Severity.HIGH,
-                preview     = f"ttl={ttl_h}h (mala práctica PKI)",
+                preview     = t(
+                    f"ttl={ttl_h}h (PKI bad practice)",
+                    f"ttl={ttl_h}h (mala práctica PKI)",
+                ),
                 context     = [
-                    f"  TTL de certificado = {ttl_h}h (> 87600h = 10 años).",
-                    "  Mala práctica asociada a CVE-2026-5052: certificados de",
-                    "  larga vida facilitan el abuso post-explotación.",
+                    t(
+                        f"  Certificate TTL = {ttl_h}h (> 87600h = 10 years).",
+                        f"  TTL de certificado = {ttl_h}h (> 87600h = 10 años).",
+                    ),
+                    t(
+                        "  Bad practice related to CVE-2026-5052: long-lived",
+                        "  Mala práctica asociada a CVE-2026-5052: certificados de",
+                    ),
+                    t(
+                        "  certificates facilitate post-exploitation abuse.",
+                        "  larga vida facilitan el abuso post-explotación.",
+                    ),
                 ],
                 fingerprint = fp,
             ))
@@ -452,14 +482,29 @@ def scan_vault_misconfig(path: Path) -> List[Finding]:
             findings.append(Finding(
                 file        = str(ref_file),
                 line_no     = 0,
-                pattern     = "SECRET-VAULT-002: Vault Audit Log deshabilitado",
+                pattern     = t(
+                    "SECRET-VAULT-002: Vault Audit Log disabled",
+                    "SECRET-VAULT-002: Vault Audit Log deshabilitado",
+                ),
                 category    = "Vault · Misconfig",
                 severity    = Severity.HIGH,
-                preview     = "Sin bloque audit { type = \"file\" } en configs HCL",
+                preview     = t(
+                    "No audit { type = \"file\" } block in HCL configs",
+                    "Sin bloque audit { type = \"file\" } en configs HCL",
+                ),
                 context     = [
-                    "  No se encontró ningún bloque audit { type = \"file\" }",
-                    "  en los ficheros .hcl analizados. Sin audit log activo,",
-                    "  las operaciones de Vault no quedan registradas.",
+                    t(
+                        "  No audit { type = \"file\" } block found",
+                        "  No se encontró ningún bloque audit { type = \"file\" }",
+                    ),
+                    t(
+                        "  in the analysed .hcl files. Without an active audit log,",
+                        "  en los ficheros .hcl analizados. Sin audit log activo,",
+                    ),
+                    t(
+                        "  Vault operations are not recorded.",
+                        "  las operaciones de Vault no quedan registradas.",
+                    ),
                 ],
                 fingerprint = fp,
             ))
@@ -475,14 +520,23 @@ def scan_vault_misconfig(path: Path) -> List[Finding]:
             findings.append(Finding(
                 file        = str(cfg_file),
                 line_no     = linea,
-                pattern     = "SECRET-VAULT-003: VAULT_SKIP_VERIFY=true (TLS deshabilitado)",
+                pattern     = t(
+                    "SECRET-VAULT-003: VAULT_SKIP_VERIFY=true (TLS disabled)",
+                    "SECRET-VAULT-003: VAULT_SKIP_VERIFY=true (TLS deshabilitado)",
+                ),
                 category    = "Vault · Misconfig",
                 severity    = Severity.HIGH,
                 preview     = _censor(m.group(0)),
                 context     = [
                     f"  {linea:4d} │ {m.group(0).rstrip()}",
-                    "  TLS deshabilitado → tráfico Vault sin verificación de",
-                    "  certificado. Vulnerable a ataques MITM.",
+                    t(
+                        "  TLS disabled → Vault traffic without certificate",
+                        "  TLS deshabilitado → tráfico Vault sin verificación de",
+                    ),
+                    t(
+                        "  verification. Vulnerable to MITM attacks.",
+                        "  certificado. Vulnerable a ataques MITM.",
+                    ),
                 ],
                 fingerprint = fp,
             ))
@@ -684,14 +738,23 @@ def _obtener_envs_contenedor(container_id: str) -> Optional[List[str]]:
 def scan_docker_container(container_id: str) -> List[Finding]:
     """Escanea las variables de entorno de un contenedor Docker en ejecución."""
     if not _docker_disponible():
-        _console.print("[yellow]  Aviso: 'docker' no encontrado en PATH — omitiendo escaneo de contenedor[/]")
+        _console.print(t(
+            "[yellow]  Warning: 'docker' not found in PATH — skipping container scan[/]",
+            "[yellow]  Aviso: 'docker' no encontrado en PATH — omitiendo escaneo de contenedor[/]",
+        ))
         return []
 
-    _console.print(f"[cyan]  Escaneando contenedor Docker: {container_id}[/]")
+    _console.print(t(
+        f"[cyan]  Scanning Docker container: {container_id}[/]",
+        f"[cyan]  Escaneando contenedor Docker: {container_id}[/]",
+    ))
 
     envs = _obtener_envs_contenedor(container_id)
     if envs is None:
-        _console.print(f"[yellow]  Aviso: no se pudieron obtener variables de entorno del contenedor '{container_id}'[/]")
+        _console.print(t(
+            f"[yellow]  Warning: could not retrieve environment variables from container '{container_id}'[/]",
+            f"[yellow]  Aviso: no se pudieron obtener variables de entorno del contenedor '{container_id}'[/]",
+        ))
         return []
 
     hallazgos: List[Finding] = []
@@ -715,21 +778,24 @@ def scan_docker_container(container_id: str) -> List[Finding]:
                 severity    = Severity.CRITICAL,
                 preview     = extracto,
                 context     = [
-                    f"  Contenedor: {container_id}",
-                    f"  Variable:   {nombre_var}",
-                    f"  Patrón:     {pat['name']}",
-                    f"  Extracto:   {extracto}",
+                    t(f"  Container:  {container_id}", f"  Contenedor: {container_id}"),
+                    t(f"  Variable:   {nombre_var}",   f"  Variable:   {nombre_var}"),
+                    t(f"  Pattern:    {pat['name']}",  f"  Patrón:     {pat['name']}"),
+                    t(f"  Excerpt:    {extracto}",     f"  Extracto:   {extracto}"),
                 ],
                 fingerprint = fp,
             ))
 
     if hallazgos:
-        _console.print(
-            f"  [bold red]⚠ {len(hallazgos)} secreto(s) encontrado(s) en "
-            f"variables de entorno de '{container_id}'[/]"
-        )
+        _console.print(t(
+            f"  [bold red]⚠ {len(hallazgos)} secret(s) found in environment variables of '{container_id}'[/]",
+            f"  [bold red]⚠ {len(hallazgos)} secreto(s) encontrado(s) en variables de entorno de '{container_id}'[/]",
+        ))
     else:
-        _console.print(f"  [green]✔ Sin secretos detectados en las envs de '{container_id}'[/]")
+        _console.print(t(
+            f"  [green]✔ No secrets detected in envs of '{container_id}'[/]",
+            f"  [green]✔ Sin secretos detectados en las envs de '{container_id}'[/]",
+        ))
 
     return hallazgos
 
@@ -737,7 +803,10 @@ def scan_docker_container(container_id: str) -> List[Finding]:
 def scan_all_docker_containers() -> List[Finding]:
     """Escanea los contenedores Docker actualmente en ejecución."""
     if not _docker_disponible():
-        _console.print("[yellow]  Aviso: 'docker' no encontrado en PATH — omitiendo escaneo de contenedores[/]")
+        _console.print(t(
+            "[yellow]  Warning: 'docker' not found in PATH — skipping container scan[/]",
+            "[yellow]  Aviso: 'docker' no encontrado en PATH — omitiendo escaneo de contenedores[/]",
+        ))
         return []
 
     try:
@@ -751,10 +820,16 @@ def scan_all_docker_containers() -> List[Finding]:
         return []
 
     if not ids:
-        _console.print("[yellow]  No hay contenedores Docker en ejecución.[/]")
+        _console.print(t(
+            "[yellow]  No Docker containers currently running.[/]",
+            "[yellow]  No hay contenedores Docker en ejecución.[/]",
+        ))
         return []
 
-    _console.print(f"[cyan]  Escaneando {len(ids)} contenedor(es) Docker en ejecución...[/]")
+    _console.print(t(
+        f"[cyan]  Scanning {len(ids)} running Docker container(s)...[/]",
+        f"[cyan]  Escaneando {len(ids)} contenedor(es) Docker en ejecución...[/]",
+    ))
     todos_hallazgos: List[Finding] = []
 
     for cid in ids:
@@ -796,17 +871,23 @@ def _kubectl_disponible() -> bool:
 def scan_kubernetes_secrets(namespace: Optional[str] = None) -> List[Finding]:
     """Escanea los Kubernetes Secrets del clúster activo."""
     if not _kubectl_disponible():
-        _console.print("[yellow]  Aviso: 'kubectl' no encontrado en PATH — omitiendo escaneo de K8s Secrets[/]")
+        _console.print(t(
+            "[yellow]  Warning: 'kubectl' not found in PATH — skipping K8s Secrets scan[/]",
+            "[yellow]  Aviso: 'kubectl' no encontrado en PATH — omitiendo escaneo de K8s Secrets[/]",
+        ))
         return []
 
     if namespace:
         cmd = ["kubectl", "get", "secret", "-n", namespace, "-o", "json"]
-        scope_label = f"namespace '{namespace}'"
+        scope_label = t(f"namespace '{namespace}'", f"namespace '{namespace}'")
     else:
         cmd = ["kubectl", "get", "secret", "--all-namespaces", "-o", "json"]
-        scope_label = "todos los namespaces"
+        scope_label = t("all namespaces", "todos los namespaces")
 
-    _console.print(f"[cyan]  Consultando Kubernetes Secrets ({scope_label})...[/]")
+    _console.print(t(
+        f"[cyan]  Querying Kubernetes Secrets ({scope_label})...[/]",
+        f"[cyan]  Consultando Kubernetes Secrets ({scope_label})...[/]",
+    ))
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
@@ -880,9 +961,15 @@ def scan_kubernetes_secrets(namespace: Optional[str] = None) -> List[Finding]:
                     ))
 
     if hallazgos:
-        _console.print(f"[dim]  {len(hallazgos)} hallazgo(s) en Kubernetes Secrets[/]")
+        _console.print(t(
+            f"[dim]  {len(hallazgos)} finding(s) in Kubernetes Secrets[/]",
+            f"[dim]  {len(hallazgos)} hallazgo(s) en Kubernetes Secrets[/]",
+        ))
     else:
-        _console.print("[dim]  Sin secretos detectados en Kubernetes Secrets[/]")
+        _console.print(t(
+            "[dim]  No secrets detected in Kubernetes Secrets[/]",
+            "[dim]  Sin secretos detectados en Kubernetes Secrets[/]",
+        ))
 
     return hallazgos
 
@@ -902,13 +989,13 @@ def _install_pre_commit_hook(target: Path) -> None:
     hook_path.parent.mkdir(parents=True, exist_ok=True)
 
     hook_script = """#!/usr/bin/env bash
-# Hook pre-commit instalado por vamp-secrets-scanner
+# Pre-commit hook installed by vamp-secrets-scanner
 # © VampSecure Studios — VampSecure Labs Security Research Division
 set -euo pipefail
 
 TARGET="$(git rev-parse --show-toplevel 2>/dev/null || echo ".")"
 
-echo "[vamp-secrets-scanner] Escaneando secretos antes del commit..."
+echo "[vamp-secrets-scanner] Scanning for secrets before commit..."
 ALLOWLIST_OPT=""
 [ -f "$TARGET/.vamp-allowlist.json" ] && ALLOWLIST_OPT="--allowlist $TARGET/.vamp-allowlist.json"
 python3 -m vamp_secrets_scanner "$TARGET" --min-severity MEDIUM $ALLOWLIST_OPT 2>&1
@@ -916,9 +1003,9 @@ CODE=$?
 
 if [ $CODE -ge 1 ]; then
     echo "" >&2
-    echo "[vamp-secrets-scanner] ⛔  Commit BLOQUEADO — secretos encontrados (MEDIUM+)" >&2
-    echo "   Elimina los secretos, rótalos y vuelve a intentarlo." >&2
-    echo "   Para omitir este check (úsalo con cuidado): git commit --no-verify" >&2
+    echo "[vamp-secrets-scanner] ⛔  Commit BLOCKED — secrets found (MEDIUM+)" >&2
+    echo "   Remove the secrets, rotate them, and try again." >&2
+    echo "   To skip this check (use with caution): git commit --no-verify" >&2
     exit 1
 fi
 
@@ -926,9 +1013,18 @@ exit 0
 """
     hook_path.write_text(hook_script, encoding="utf-8")
     hook_path.chmod(0o755)
-    _console.print(f"[bold green]  ✔ Hook pre-commit instalado: {hook_path}[/]")
-    _console.print("[dim]  Cada commit escaneará el árbol de trabajo completo (MEDIUM+).[/]")
-    _console.print(f"[dim]  Para desinstalar: rm {hook_path}[/]")
+    _console.print(t(
+        f"[bold green]  ✔ Pre-commit hook installed: {hook_path}[/]",
+        f"[bold green]  ✔ Hook pre-commit instalado: {hook_path}[/]",
+    ))
+    _console.print(t(
+        "[dim]  Each commit will scan the full working tree (MEDIUM+).[/]",
+        "[dim]  Cada commit escaneará el árbol de trabajo completo (MEDIUM+).[/]",
+    ))
+    _console.print(t(
+        f"[dim]  To uninstall: rm {hook_path}[/]",
+        f"[dim]  Para desinstalar: rm {hook_path}[/]",
+    ))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1091,8 +1187,12 @@ async def _run_verification(findings: List[Finding]) -> None:
     import aiohttp as _aiohttp
     from collections import defaultdict as _dd
 
-    VERIFICABLES = {"Cloud · AWS", "VCS · GitHub", "Pagos · Stripe",
-                    "Comunicaciones · Slack", "Comunicaciones · Telegram"}
+    VERIFICABLES = {
+        "Cloud · AWS", "VCS · GitHub",
+        "Payments · Stripe", "Pagos · Stripe",
+        "Communications · Slack", "Comunicaciones · Slack",
+        "Communications · Telegram", "Comunicaciones · Telegram",
+    }
 
     candidatos = [
         f for f in findings
@@ -1102,10 +1202,16 @@ async def _run_verification(findings: List[Finding]) -> None:
     ]
 
     if not candidatos:
-        _console.print("[dim]  --verify: no hay hallazgos verificables.[/]")
+        _console.print(t(
+            "[dim]  --verify: no verifiable findings.[/]",
+            "[dim]  --verify: no hay hallazgos verificables.[/]",
+        ))
         return
 
-    _console.print(f"\n[bold cyan]  FASE EXTRA — Verificación activa ({len(candidatos)} secretos)[/]\n")
+    _console.print(t(
+        f"\n[bold cyan]  EXTRA PHASE — Active verification ({len(candidatos)} secrets)[/]\n",
+        f"\n[bold cyan]  FASE EXTRA — Verificación activa ({len(candidatos)} secretos)[/]\n",
+    ))
 
     activos = revocados = sin_datos = 0
 
@@ -1133,10 +1239,12 @@ async def _run_verification(findings: List[Finding]) -> None:
                 for fnd in (entry["key_finding"], entry["secret_finding"]):
                     if fnd:
                         sin_datos += 1
-                        _console.print(
+                        _console.print(t(
+                            f"  [dim]? indeterminate[/] {fnd.pattern} — AWS key without paired secret "
+                            f"in {fnd.file}:{fnd.line_no}",
                             f"  [dim]? indeterminado[/] {fnd.pattern} — AWS key sin secreto parejado "
-                            f"en {fnd.file}:{fnd.line_no}"
-                        )
+                            f"en {fnd.file}:{fnd.line_no}",
+                        ))
                 continue
 
             status = await _check_aws_credentials_pair(session, entry["key_id"], entry["secret"])
@@ -1145,13 +1253,13 @@ async def _run_verification(findings: List[Finding]) -> None:
 
             if status is True:
                 activos += 1
-                _console.print(f"  [bold red]✖ ACTIVO[/]   {label}")
+                _console.print(f"  [bold red]✖ {t('ACTIVE', 'ACTIVO')}[/]   {label}")
             elif status is False:
                 revocados += 1
-                _console.print(f"  [green]✔ revocado[/] {label}")
+                _console.print(f"  [green]✔ {t('revoked', 'revocado')}[/] {label}")
             else:
                 sin_datos += 1
-                _console.print(f"  [dim]? indeterminado[/] {label}")
+                _console.print(f"  [dim]? {t('indeterminate', 'indeterminado')}[/] {label}")
 
         for finding in candidatos:
             if id(finding) in aws_ids:
@@ -1159,7 +1267,10 @@ async def _run_verification(findings: List[Finding]) -> None:
             raw = _extract_raw_value(finding)
             if not raw:
                 sin_datos += 1
-                _console.print(f"  [dim]? {finding.pattern} en {finding.file}:{finding.line_no} — valor no recuperable[/]")
+                _console.print(t(
+                    f"  [dim]? {finding.pattern} in {finding.file}:{finding.line_no} — value not recoverable[/]",
+                    f"  [dim]? {finding.pattern} en {finding.file}:{finding.line_no} — valor no recuperable[/]",
+                ))
                 continue
 
             status = await _check_secret_active(session, finding.category, raw)
@@ -1168,30 +1279,32 @@ async def _run_verification(findings: List[Finding]) -> None:
             if status is True:
                 activos += 1
                 _console.print(
-                    f"  [bold red]✖ ACTIVO[/]   {finding.pattern} [{preview}] "
+                    f"  [bold red]✖ {t('ACTIVE', 'ACTIVO')}[/]   {finding.pattern} [{preview}] "
                     f"— {finding.file}:{finding.line_no}"
                 )
             elif status is False:
                 revocados += 1
                 _console.print(
-                    f"  [green]✔ revocado[/] {finding.pattern} [{preview}] "
+                    f"  [green]✔ {t('revoked', 'revocado')}[/] {finding.pattern} [{preview}] "
                     f"— {finding.file}:{finding.line_no}"
                 )
             else:
                 sin_datos += 1
                 _console.print(
-                    f"  [dim]? indeterminado[/] {finding.pattern} [{preview}] "
+                    f"  [dim]? {t('indeterminate', 'indeterminado')}[/] {finding.pattern} [{preview}] "
                     f"— {finding.file}:{finding.line_no}"
                 )
 
     estilo = "bold red" if activos > 0 else "bold green"
-    _console.print(
-        f"\n  [{estilo}]Verificación: {activos} activos · {revocados} revocados · {sin_datos} sin datos[/]"
-    )
+    _console.print(t(
+        f"\n  [{estilo}]Verification: {activos} active · {revocados} revoked · {sin_datos} no data[/]",
+        f"\n  [{estilo}]Verificación: {activos} activos · {revocados} revocados · {sin_datos} sin datos[/]",
+    ))
     if activos:
-        _console.print(
-            "  [bold red]⚠ ACCIÓN URGENTE: rota inmediatamente los secretos activos listados.[/]"
-        )
+        _console.print(t(
+            "  [bold red]⚠ URGENT ACTION: rotate the listed active secrets immediately.[/]",
+            "  [bold red]⚠ ACCIÓN URGENTE: rota inmediatamente los secretos activos listados.[/]",
+        ))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
