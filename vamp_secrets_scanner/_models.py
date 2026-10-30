@@ -15,10 +15,82 @@ from enum import Enum
 from typing import Dict, List, Optional, Set
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Bilingual support — set LANG before first use (CLI does: _models.LANG = args.lang)
+# ─────────────────────────────────────────────────────────────────────────────
+
+LANG: str = 'en'
+
+
+def t(en: str, es: str) -> str:
+    """Return the string for the active language (resolved at call time)."""
+    return es if LANG == 'es' else en
+
+
+_CAT_EN: Dict[str, str] = {
+    "Pagos · Stripe":              "Payments · Stripe",
+    "Pagos · PayPal":              "Payments · PayPal",
+    "Pagos · Braintree":           "Payments · Braintree",
+    "Comunicaciones · Slack":      "Communications · Slack",
+    "Comunicaciones · Telegram":   "Communications · Telegram",
+    "Comunicaciones · Discord":    "Communications · Discord",
+    "Comunicaciones · Twilio":     "Communications · Twilio",
+    "Correo · SendGrid":           "Email · SendGrid",
+    "Correo · Mailgun":            "Email · Mailgun",
+    "Infraestructura · PKI":       "Infrastructure · PKI",
+    "Infraestructura · WireGuard": "Infrastructure · WireGuard",
+    "Infraestructura · Vault":     "Infrastructure · Vault",
+    "Base de datos":               "Database",
+    "Autenticación · JWT":         "Authentication · JWT",
+    "Autenticación · OAuth":       "Authentication · OAuth",
+    "Registros · NPM":             "Registries · NPM",
+    "Registros · PyPI":            "Registries · PyPI",
+    "PII · Tarjeta de pago":       "PII · Payment Card",
+    "PII · Cuenta bancaria":       "PII · Bank Account",
+    "PII · Identidad":             "PII · Identity",
+    "PII · Contacto":              "PII · Contact",
+    "PII · Salud":                 "PII · Health",
+    "Genérico":                    "Generic",
+    "Entropía":                    "Entropy",
+    "Externo":                     "External",
+}
+
+_NAME_EN: Dict[str, str] = {
+    "PostgreSQL DSN con contraseña":        "PostgreSQL DSN with password",
+    "MySQL DSN con contraseña":             "MySQL DSN with password",
+    "MongoDB URI con contraseña":           "MongoDB URI with password",
+    "Redis URL con contraseña":             "Redis URL with password",
+    "MSSQL DSN con contraseña":             "MSSQL DSN with password",
+    "JWT Secret hardcodeado":               "Hardcoded JWT Secret",
+    "Bearer Token en código":               "Bearer Token in code",
+    "Tarjeta Visa":                         "Visa Card",
+    "Tarjeta Mastercard":                   "Mastercard Card",
+    "Tarjeta American Express":             "American Express Card",
+    "Tarjeta Discover":                     "Discover Card",
+    "CVV/CVC hardcodeado":                  "Hardcoded CVV/CVC",
+    "IBAN bancario":                        "Bank IBAN",
+    "BIC/SWIFT bancario":                   "Bank BIC/SWIFT",
+    "SSN EE.UU.":                           "US SSN",
+    "DNI español":                          "Spanish DNI",
+    "NIE español":                          "Spanish NIE",
+    "NIF/CIF empresa española":             "Spanish NIF/CIF",
+    "NUSS (Seg. Social español)":           "Spanish Social Security Number (NUSS)",
+    "NHS UK (número paciente)":             "UK NHS Patient Number",
+    "Email en contexto sensible":           "Email in sensitive context",
+    "Teléfono español":                     "Spanish Phone Number",
+    "Teléfono internacional":               "International Phone Number",
+    "Número de cuenta bancaria ES (CCC)":   "Spanish Bank Account Number (CCC)",
+    "Contraseña hardcodeada":               "Hardcoded Password",
+    "API key genérica":                     "Generic API Key",
+    "Secret genérico":                      "Generic Secret",
+    "Token genérico":                       "Generic Token",
+    "Private key genérica":                 "Generic Private Key",
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Versión y nombre de herramienta
 # ─────────────────────────────────────────────────────────────────────────────
 
-VERSION   = "3.1.0"
+VERSION   = "3.2.0"
 TOOL_NAME = "vamp-secrets-scanner"
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -327,6 +399,11 @@ class Finding:
     git_date:   Optional[str] = None
     allowlisted: bool = False
     delta_state: Optional[str] = None  # "new" | "recurring" cuando se usa --delta
+
+    def __post_init__(self) -> None:
+        if LANG == 'en':
+            self.category = _CAT_EN.get(self.category, self.category)
+            self.pattern  = _NAME_EN.get(self.pattern, self.pattern)
 
     def to_dict(self) -> dict:
         d = asdict(self)
