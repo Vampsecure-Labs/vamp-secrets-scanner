@@ -80,6 +80,7 @@ usage: vamp-secrets-scanner [-h] [-o FILE] [--html FILE] [--sarif FILE]
                              [--git-history] [--max-commits N]
                              [--allowlist FILE] [--generate-allowlist FILE]
                              [--install-hook] [--export-semgrep FILE]
+                             [--lang {en,es}]
                              DIRECTORY
 ```
 
@@ -138,7 +139,7 @@ python vamp_secrets_scanner.py . --verify
 ### Sample Output
 
 ```
-  vamp-secrets-scanner v3.1.0 · 271 patterns · scanning: /repo/
+  vamp-secrets-scanner v3.2.0 · 271 patterns · scanning: /repo/
   ──────────────────────────────────────────────────────────────
   [CRITICAL] AWS Access Key ID                  config.py:14
              AKIAIOSFODNN7EXAMPLE
@@ -242,6 +243,7 @@ This tool is part of the **VampSecure Labs Security Toolkit** — a collection o
 
 | Version | Main changes |
 |---------|-------------|
+| v3.2.0 | Bilingual EN/ES output via `--lang en|es` |
 | v3.1.1 | Bilingual README (EN/ES) |
 | v3.1.0 | **+29 enterprise/streaming/IoT patterns** · `enterprise_streaming.yaml`: Salesforce, ServiceNow, HubSpot, Monday, Freshdesk, Intercom, Confluent, Pulsar, RabbitMQ, MongoDB Atlas, CockroachDB, PlanetScale, Supabase, AWS IoT, Azure IoT, Firebase, Unity, RevenueCat, Snyk, SonarQube, Checkmarx, Proxmox, VMware, Nutanix, Terraform Cloud, HashiCorp Vault · **300+ patterns total** · 9 YAML files |
 | v3.0.0 | Extensible YAML engine — 8 `rules/*.yaml` files, **271 patterns** (×3.5 vs v2.7); new categories: AI APIs, hardware/web3/gaming/enterprise; daemon mode `--watch N`; `--delta FILE` diff; importable package |
@@ -323,6 +325,7 @@ uso: vamp-secrets-scanner [-h] [-o FICHERO] [--html FICHERO] [--sarif FICHERO]
                            [--git-history] [--max-commits N]
                            [--allowlist FICHERO] [--generate-allowlist FICHERO]
                            [--install-hook] [--export-semgrep FICHERO]
+                             [--lang {en,es}]
                            DIRECTORIO
 ```
 
@@ -381,7 +384,7 @@ python vamp_secrets_scanner.py . --verify
 ### Sample Output
 
 ```
-  vamp-secrets-scanner v3.1.0 · 271 patrones · escaneando: /repo/
+  vamp-secrets-scanner v3.2.0 · 271 patrones · escaneando: /repo/
   ──────────────────────────────────────────────────────────────
   [CRITICAL] AWS Access Key ID                  config.py:14
              AKIAIOSFODNN7EXAMPLE
@@ -485,6 +488,7 @@ Esta herramienta forma parte del **VampSecure Labs Security Toolkit** — una co
 
 | Versión | Cambios principales |
 |---------|---------------------|
+| v3.2.0 | Salida bilingüe EN/ES mediante `--lang en|es` |
 | v3.1.1 | README bilingüe (EN/ES) |
 | v3.1.0 | **+29 patrones enterprise/streaming/IoT** · `enterprise_streaming.yaml`: Salesforce, ServiceNow, HubSpot, Monday, Freshdesk, Intercom, Confluent, Pulsar, RabbitMQ, MongoDB Atlas, CockroachDB, PlanetScale, Supabase, AWS IoT, Azure IoT, Firebase, Unity, RevenueCat, Snyk, SonarQube, Checkmarx, Proxmox, VMware, Nutanix, Terraform Cloud, HashiCorp Vault · **300+ patrones totales** · 9 ficheros YAML |
 | v3.0.0 | Motor YAML extensible — 8 ficheros `rules/*.yaml`, **271 patrones** (×3.5 vs v2.7); nuevas categorías: IA APIs, hardware/web3/gaming/enterprise; daemon mode `--watch N`; `--delta FILE` diff; paquete importable |
