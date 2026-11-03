@@ -42,7 +42,7 @@ __   ___   __  __ ___  ___ ___ ___ _   _ ___ ___ _      _   ___ ___
  \ V / _ \| |\/| |  _/\__ \ _| (__| |_| |   / _|| |__ / _ \| _ \__ \
   \_/_/ \_\_|  |_|_|  |___/___\___|\___/|_|_\___|____/_/ \_\___/___/
   by Antonio Hernandez "Belky" — VampSecure Studios
-  vamp-secrets-scanner v3.2.0 · Static Secrets & Git History Scanner
+  vamp-secrets-scanner v3.3.0 · Static Secrets & Git History Scanner
   ────────────────────────────────────────────────────────────────────────
   USO EXCLUSIVO EN AUDITORÍAS AUTORIZADAS · El uso no autorizado es ilegal
 """
@@ -130,7 +130,27 @@ def print_critical_panels(findings: List[Finding], base: Path) -> None:
             border_style="red"))
 
 
+def _detect_lang() -> str:
+    import os as _os
+    argv = sys.argv[1:]
+    for i, arg in enumerate(argv):
+        if arg == "--lang" and i + 1 < len(argv):
+            v = argv[i + 1]
+            return v if v in ("en", "es") else "en"
+        if arg.startswith("--lang="):
+            v = arg.split("=", 1)[1]
+            return v if v in ("en", "es") else "en"
+    for var in ("LANG", "LANGUAGE"):
+        val = _os.environ.get(var, "")
+        if val.lower().startswith("es"):
+            return "es"
+    return "en"
+
+
 def parse_args() -> argparse.Namespace:
+    import vamp_secrets_scanner._models as _models_mod
+    _models_mod.LANG = _detect_lang()
+
     p = argparse.ArgumentParser(
         prog="vamp-secrets-scanner",
         description="VampSecure Labs — Static Secrets, PII & Git History Scanner",
