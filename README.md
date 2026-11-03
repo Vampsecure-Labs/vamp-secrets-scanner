@@ -139,7 +139,7 @@ python vamp_secrets_scanner.py . --verify
 ### Sample Output
 
 ```
-  vamp-secrets-scanner v3.2.0 · 271 patterns · scanning: /repo/
+  vamp-secrets-scanner v3.3.0 · 271 patterns · scanning: /repo/
   ──────────────────────────────────────────────────────────────
   [CRITICAL] AWS Access Key ID                  config.py:14
              AKIAIOSFODNN7EXAMPLE
@@ -243,6 +243,7 @@ This tool is part of the **VampSecure Labs Security Toolkit** — a collection o
 
 | Version | Main changes |
 |---------|-------------|
+| v3.3.0 | Bilingual `--help` menu: `_detect_lang()` pre-parser detects `--lang` / `LANG` env var |
 | v3.2.0 | Bilingual EN/ES output via `--lang en|es` |
 | v3.1.1 | Bilingual README (EN/ES) |
 | v3.1.0 | **+29 enterprise/streaming/IoT patterns** · `enterprise_streaming.yaml`: Salesforce, ServiceNow, HubSpot, Monday, Freshdesk, Intercom, Confluent, Pulsar, RabbitMQ, MongoDB Atlas, CockroachDB, PlanetScale, Supabase, AWS IoT, Azure IoT, Firebase, Unity, RevenueCat, Snyk, SonarQube, Checkmarx, Proxmox, VMware, Nutanix, Terraform Cloud, HashiCorp Vault · **300+ patterns total** · 9 YAML files |
@@ -384,7 +385,7 @@ python vamp_secrets_scanner.py . --verify
 ### Sample Output
 
 ```
-  vamp-secrets-scanner v3.2.0 · 271 patrones · escaneando: /repo/
+  vamp-secrets-scanner v3.3.0 · 271 patrones · escaneando: /repo/
   ──────────────────────────────────────────────────────────────
   [CRITICAL] AWS Access Key ID                  config.py:14
              AKIAIOSFODNN7EXAMPLE
@@ -488,6 +489,7 @@ Esta herramienta forma parte del **VampSecure Labs Security Toolkit** — una co
 
 | Versión | Cambios principales |
 |---------|---------------------|
+| v3.3.0 | Menú `--help` bilingüe: `_detect_lang()` detecta `--lang` / variable `LANG` antes del parser |
 | v3.2.0 | Salida bilingüe EN/ES mediante `--lang en|es` |
 | v3.1.1 | README bilingüe (EN/ES) |
 | v3.1.0 | **+29 patrones enterprise/streaming/IoT** · `enterprise_streaming.yaml`: Salesforce, ServiceNow, HubSpot, Monday, Freshdesk, Intercom, Confluent, Pulsar, RabbitMQ, MongoDB Atlas, CockroachDB, PlanetScale, Supabase, AWS IoT, Azure IoT, Firebase, Unity, RevenueCat, Snyk, SonarQube, Checkmarx, Proxmox, VMware, Nutanix, Terraform Cloud, HashiCorp Vault · **300+ patrones totales** · 9 ficheros YAML |
